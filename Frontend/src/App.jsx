@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { BrowserRouter } from "react-router-dom";
 import './App.css'
-import UserLogin from './user/UserLogin'
+import AdminLogin from './admin/Login'
+import AdminLayout from './admin/MainLayout'
+
 function App() {
   return (
-    <>
-      <UserLogin></UserLogin>
-    </>
+    <BrowserRouter>
+      <AdminLayout />
+    </BrowserRouter>
   )
 }
 
