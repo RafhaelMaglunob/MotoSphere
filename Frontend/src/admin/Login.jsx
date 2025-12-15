@@ -1,10 +1,12 @@
 import React,{ useState } from 'react'
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
+import { useNavigate } from "react-router-dom";
 
 import Shield from "../component/img/Shield.png"
 
 function Login() {
     const [showPassword, setShowPassword] = useState(false);
+    const navigate = useNavigate();
     
     return (
         <div className="h-screen overflow-hidden bg-[url('./component/img/AdminLogin.png')] bg-[length:100%_100%] bg-no-repeat bg-center">
@@ -32,7 +34,12 @@ function Login() {
                             </span>
                         </div>
                     </div>
-                    <button  className="bg-[#2EA8FF] text-center text-white text-sm w-full py-3 rounded-xl mt-6">Sign in as Admin</button>
+                    <button  
+                        className="bg-[#2EA8FF] text-center text-white text-sm w-full py-3 rounded-xl mt-6"
+                        onClick={() => navigate("/dashboard")}
+                    >
+                        Sign in as Admin
+                    </button>
                 </div>
             </div>
         </div>
