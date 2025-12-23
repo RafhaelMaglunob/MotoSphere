@@ -59,12 +59,7 @@ function Sidebar({ padding = 10, buttons = [], bgColor = "#050816", showSidebar,
           </div>
           
           {/* Footer / logout */}
-          <div className="flex flex-col mt-auto px-5">
-            <div className="text-[#F87171] text-sm flex gap-3 pb-6 cursor-pointer">
-              <img src={Logout} alt="Logout" />
-              <h1>Log Out</h1>
-            </div>
-          </div>
+          {footer}
         </div>
       </div>
     </>
