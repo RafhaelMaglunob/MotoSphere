@@ -8,3 +8,18 @@ body {
 .alegreya {
   font-family: 'Alegreya', serif;
 }
+
+/* global.css or a component CSS file */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px; /* smaller width */
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(15, 42, 82, 0.2); /* subtle background */
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #00D4FF; /* thumb color */
+  border-radius: 10px;
+}

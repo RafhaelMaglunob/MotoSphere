@@ -15,10 +15,10 @@ import Logout from "../component/img/Logout.png";
 function MainLayout() {
     const [showSidebar, setShowSidebar] = useState(false);
     const buttons = [
-        {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 
-        {icon: UsersIcon, name: "Users", path: "/admin/users"},
-        {icon: DevicesIcon, name: "Devices", path: "/admin/devices"},
-        {icon: SettingsIcon, name: "Settings", path: "/admin/settings"}
+        {icon: DashboardIcon, name: "Home", path: "/user/home"}, 
+        {icon: UsersIcon, name: "Contact Persons", path: "/user/contact-persons"},
+        {icon: DevicesIcon, name: "Notifications", path: "/user/notifications"},
+        {icon: SettingsIcon, name: "Settings", path: "/user/settings"}
     ]
 
     const footer = (
@@ -50,10 +50,10 @@ function MainLayout() {
                 className="absolute w-20 md:flex"
                 footer={footer}
             >
-                <div className="flex flex-row space-x-4 items-center mb-7 p-3">
+                <div className="flex flex-col space-x-4 items-center mb-7 p-3">
                     
                     <img src={MotoSphere_Logo} alt="MotoSphere Logo" />
-                    <h1 className="text-white text-lg font-bold">Admin Portal</h1>
+                    <h1 className="text-white text-lg font-bold">MotoSphere</h1>
                 </div>
             </Sidebar>
             
