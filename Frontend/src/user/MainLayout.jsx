@@ -22,22 +22,13 @@ function MainLayout() {
     ]
 
     const footer = (
-        <div className="flex flex-col px-5 mt-20">
-            <div className="flex gap-2 items-center">
-                <span className="bg-[#06B6D4]/20 rounded-full p-2">
-                <Shield className="w-5 h-5 text-[#22D3EE]" />
-                </span>
-                <div className="flex flex-col justify-center">
-                <h1 className="text-white text-sm font-bold">Admin User</h1>
-                <h4 className="text-[#9BB3D6] text-xs">Super Admin</h4>
-                </div>
-            </div>
-
-            <div className="text-[#F87171] text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
+        <div className="flex flex-col mt-auto px-5">
+            <div className="text-[#F87171] text-sm flex gap-3 pb-6 cursor-pointer">
                 <img src={Logout} alt="Logout" />
                 <h1>Log Out</h1>
             </div>
         </div>
+
     )
 
     return (
