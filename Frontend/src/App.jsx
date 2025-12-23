@@ -4,13 +4,20 @@ import "./App.css";
 /* Admin Page */
 import AdminLogin from "./admin/Login";
 import AdminLayout from "./admin/MainLayout";
-import Dashboard from "./admin/Dashboard";
-import Users from "./admin/Users";
-import Devices from "./admin/Devices";
-import Settings from "./admin/Settings";
+import AdminDashboard from "./admin/Dashboard";
+import AdminUsers from "./admin/Users";
+import AdminDevices from "./admin/Devices";
+import AdminSettings from "./admin/Settings";
 
 /* User Page */
 import UserLogin from "./user/Login";
+import UserLayout from "./user/MainLayout";
+import UserHome from "./user/UserHome";
+import UserSettings from "./user/Settings";
+import UserContactPersons from "./user/ContactPersons";
+import UserNotifications from "./user/Notifications";
+
+/* Landing Page */
 import LandingLayout from "./user/LandingLayout";
 import Home from "./user/home";
 import AboutUs from "./user/AboutUs";
@@ -28,16 +35,16 @@ function App() {
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="users" element={<Users />} />
-          <Route path="devices" element={<Devices />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="devices" element={<AdminDevices />} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
 
         {/* User Login */}
         <Route path="/user-login" element={<UserLogin />} />
 
-        {/* User Routes */}
+        {/* Landing Routes */}
         <Route element={<LandingLayout />}>
           <Route path="home" element={<Home />} />
           <Route path="about-us" element={<AboutUs />} />
@@ -45,6 +52,13 @@ function App() {
           <Route path="hardware-video" element={<HardwareVideo />} />
         </Route>
         
+        {/* User Routes */}
+        <Route path="/user" element={<UserLayout />}>
+          <Route path="home" element={<UserHome />} />
+          <Route path="contact-persons" element={<UserContactPersons />} />
+          <Route path="notifications" element={<UserNotifications />} />
+          <Route path="settings" element={<UserSettings />} />
+        </Route>
         <Route path="mission" element={<Mission />} />
         <Route path="learn-more" element={<LearnMore />} />
 

@@ -36,7 +36,7 @@ function Login() {
                     </div>
                     <button  
                         className="bg-[#2EA8FF] text-center text-white text-sm w-full py-3 rounded-xl mt-6"
-                        onClick={() => navigate("/dashboard")}
+                        onClick={() => navigate("/admin/dashboard")}
                     >
                         Sign in as Admin
                     </button>

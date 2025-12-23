@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { AiOutlineClose } from "react-icons/ai";
 
-function Sidebar({ width = 200, buttons = [], bgColor = "#050816", showSidebar, setShowSidebar, children, footer }) {
+function Sidebar({ width = 200, buttons = [], bgColor = "#050816", showSidebar, setShowSidebar, children, footer, isMdHidden = false }) {
   return (
     <>
       {/* Overlay for mobile */}
@@ -17,7 +17,7 @@ function Sidebar({ width = 200, buttons = [], bgColor = "#050816", showSidebar, 
         className={`
           fixed top-0 left-0 min-h-screen z-40 transform transition-transform duration-300
           ${showSidebar ? "translate-x-0" : "-translate-x-full"} 
-          md:hidden
+          ${isMdHidden ? "hidden" : "md:translate-x-0 md:relative md:block"}
         `}
         style={{ width: `${width}px`, backgroundColor: bgColor }}
       >
@@ -40,7 +40,7 @@ function Sidebar({ width = 200, buttons = [], bgColor = "#050816", showSidebar, 
                 onClick={() => setShowSidebar(false)} // auto-close on mobile
               >
                 { btn.icon &&    
-                    <btn.icon />
+                  <btn.icon />
                 }
                 {btn.name}
               </Link>

@@ -91,6 +91,7 @@ function LandingLayout() {
                     className="absolute w-20 md:hidden"
                     bgColor="#231232"
                     footer={footerContent}
+                    isMdHidden={true}
                 >
                     <div className="flex justify-center items-center">
                         <img src={MotoSphere_Logo} alt="MotoSphere Logo" />
