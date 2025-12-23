@@ -1,8 +1,10 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { AiOutlineClose } from "react-icons/ai";
 
-function Sidebar({ width = 200, buttons = [], bgColor = "#050816", showSidebar, setShowSidebar, children, footer, isMdHidden = false }) {
+import Logout from '../img/Logout.png'
+
+function Sidebar({ padding = 10, buttons = [], bgColor = "#050816", showSidebar, setShowSidebar, children, footer, isMdHidden = false }) {
   return (
     <>
       {/* Overlay for mobile */}
@@ -19,34 +21,49 @@ function Sidebar({ width = 200, buttons = [], bgColor = "#050816", showSidebar, 
           ${showSidebar ? "translate-x-0" : "-translate-x-full"} 
           ${isMdHidden ? "hidden" : "md:translate-x-0 md:relative md:block"}
         `}
-        style={{ width: `${width}px`, backgroundColor: bgColor }}
+        
+        style={{ padding: padding, backgroundColor: bgColor }}
       >
         {/* Close button on mobile */}
-        <AiOutlineClose
-          className="block md:hidden text-white text-xl cursor-pointer m-4"
-          onClick={() => setShowSidebar(false)}
-        />
+        
+        <div
+          className="flex flex-col justify-between h-screen"
+        >
+          <AiOutlineClose
+            className="block md:hidden text-white text-lg cursor-pointer"
+            onClick={() => setShowSidebar(false)}
+          />
+          <div className="flex flex-col overflow-hidden">
+            {/* Top content */}
+            <div>
+              {children}
 
-        <div className="flex flex-col h-full overflow-hidden justify-between">
-          {/* Top */}
-          <div>
-            {children}
-
-            {buttons.map((btn, index) => (
-              <Link
-                key={index}
-                to={btn.path}
-                className="block p-4 text-[#9BB3D6] hover:bg-[#06B6D4]/10 hover:text-[#22D3EE] rounded-xl flex gap-4"
-                onClick={() => setShowSidebar(false)} // auto-close on mobile
-              >
-                { btn.icon &&    
-                  <btn.icon />
-                }
-                {btn.name}
-              </Link>
-            ))}
-
-            {footer}
+              {buttons.map((btn, index) => (
+                <NavLink
+                  key={index}
+                  to={btn.path}
+                  className={({ isActive }) =>
+                    `block p-4 rounded-xl flex gap-4  ${
+                      isActive 
+                        ? "bg-[#06B6D4]/20 text-[#22D3EE]" 
+                        : "text-[#9BB3D6] hover:bg-[#06B6D4]/10 hover:text-[#22D3EE]"
+                    }`
+                  }
+                  onClick={() => setShowSidebar(false)}
+                >
+                  {btn.icon && <btn.icon />}
+                  {btn.name}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+          
+          {/* Footer / logout */}
+          <div className="flex flex-col mt-auto px-5">
+            <div className="text-[#F87171] text-sm flex gap-3 pb-6 cursor-pointer">
+              <img src={Logout} alt="Logout" />
+              <h1>Log Out</h1>
+            </div>
           </div>
         </div>
       </div>
