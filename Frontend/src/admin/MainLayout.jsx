@@ -22,7 +22,7 @@ function MainLayout() {
     ]
 
     const footer = (
-        <div className="flex flex-col px-5 mt-20">
+        <div className="flex flex-col px-5 mt-auto">
             <div className="flex gap-2 items-center">
                 <span className="bg-[#06B6D4]/20 rounded-full p-2">
                 <Shield className="w-5 h-5 text-[#22D3EE]" />
@@ -43,7 +43,6 @@ function MainLayout() {
     return (
         <div className="bg-[#0A1A3A] flex flex-row min-h-screen">
             <Sidebar 
-                width={260} 
                 buttons={buttons} 
                 showSidebar={showSidebar}
                 setShowSidebar={setShowSidebar} 
@@ -51,10 +50,10 @@ function MainLayout() {
                 footer={footer}
             >
                 <div className="flex flex-row space-x-4 items-center mb-7 p-3">
-                    
                     <img src={MotoSphere_Logo} alt="MotoSphere Logo" />
                     <h1 className="text-white text-lg font-bold">Admin Portal</h1>
                 </div>
+                
             </Sidebar>
             
             {/*Content like Dashboard,  Users, Devices, Settings*/}
