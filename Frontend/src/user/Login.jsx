@@ -6,6 +6,7 @@ import { GoogleIcon } from '../component/svg/GoogleIcon';
 
 function Login() {
     const [showPassword, setShowPassword] = useState(false);
+    const [isChecked, setChecked] = useState(false);
     const navigate = useNavigate();
     
     return (
@@ -16,21 +17,21 @@ function Login() {
                     <h2 className="text-xs text-[#94A3B8] text-center leading-[1.5]">Access your ride logs, live tracking, and emergency <br />notifications</h2>
 
                     <div className="flex flex-col gap-3 w-full">
-                        <div className="p-3 bg-white rounded-xl flex flex-row items-center justify-center space-x-4 mt-7">
+                        <div className="p-3 cursor-pointer bg-white rounded-xl flex flex-row items-center justify-center space-x-4 mt-7">
                             <img
                                 src="https://www.google.com/favicon.ico"
                                 alt="Google"
                                 className="w-5 h-5"
                             />
-                            <label className="text-xs font-semibold">Continue with Google</label>
+                            <span className="text-xs cursor-pointer font-semibold">Continue with Google</span>
                         </div>
-                        <div className="p-3 bg-blue-700 rounded-xl flex flex-row items-center justify-center space-x-4">
+                        <div className="p-3 cursor-pointer bg-blue-700 rounded-xl flex flex-row items-center justify-center space-x-4">
                             <img
                                 src="https://www.facebook.com/favicon.ico"
                                 alt="Facebook"
                                 className="w-5 h-5"
                             />
-                            <label className="text-xs text-white font-semibold">Continue with Facebook</label>
+                            <span className="text-xs text-white font-semibold">Continue with Facebook</span>
                         </div>
                     </div>
                     <span className="bg-[#0F1729] text-[#94A3B8] text-sm px-4 py-1 mt-3 mb-3">OR</span>
@@ -53,14 +54,26 @@ function Login() {
                     </div>
 
                     <div className="flex flex-row mt-4 justify-between w-full">
-                        <div className="flex flex-row space-x-3">
-                            <input type="checkbox" />
-                            <label className="text-[#94A3B8] text-xs">Remember this device</label>
+                        <div
+                            onClick={() => setChecked(prev => !prev)}
+                            className="flex items-center gap-3 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                checked={isChecked}
+                                readOnly
+                                className="cursor-pointer"
+                            />
+
+                            <label className="text-[#94A3B8] text-xs cursor-pointer">
+                                Remember this device
+                            </label>
                         </div>
+
                         <span className="text-[#22D3EE] text-xs">Forgot Password?</span>
                     </div>
                     <button  
-                        className="bg-[#2EA8FF] text-center text-white text-sm w-full py-3 rounded-xl mt-6"
+                        className="bg-[#2EA8FF] cursor-pointer text-center text-white text-sm w-full py-3 rounded-xl mt-6"
                         onClick={() => navigate("/user/home")}
                     >
                         Login
