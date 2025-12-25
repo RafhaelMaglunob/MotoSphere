@@ -3,6 +3,9 @@ import { useOutletContext } from 'react-router-dom'
 
 import { Shield } from '../component/svg/Shield';
 import { BatteryIcon } from '../component/svg/BatteryIcon';
+import { ProfileIconOutline } from '../component/svg/ProfileIconOutline';
+import PhoneIcon from '../component/svg/PhoneIcon';
+import MailIcon from '../component/svg/MailIcon';
 
 function UserHome() {
     const { username, deviceNo, lastSynced, isConnected, sensors, contacts } = useOutletContext();
@@ -76,11 +79,32 @@ function UserHome() {
                     </div>
                 </div>
 
-                <h1>Trusted Contacts</h1>
-                <div>
-                    <div>
-
-                    </div>
+                <h1 className="font-semibold text-white mt-6">Trusted Contacts</h1>
+                <div className="p-3 grid md:grid-cols-3 gap-3 ">
+                    {/* name, relation, contactNo, email */}
+                    {contacts.map((contact, index) => (
+                        <div key={index} className="flex-1 bg-[#050816]/80 p-6 rounded-2xl">
+                            <div className="flex flex-row gap-3">
+                                <div className="bg-[#0F2A52]/75 p-3 rounded-xl">
+                                    <ProfileIconOutline className="text-[#0A1A3A]/30 h-9 w-9"/>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <h1 className="text-white font-semibold text-md">{contact.name}</h1>
+                                    <span className="bg-[#0F2A52]/75 text-[#39A9FF] rounded-md w-fit text-xs px-3 py-1">{contact.relation}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-2 mt-6">
+                                <div className="flex flex-row items-center gap-3 text-white text-sm font-light">
+                                    <PhoneIcon className="w-4 h-4"/>
+                                    {contact.contactNo}
+                                </div>   
+                                <div className="flex flex-row items-center gap-3 text-white text-sm font-light">
+                                    <MailIcon innerColor={"#007BFF"} innerOpacity={0.7} borderColor='#39A9FF' borderOpacity={0.7} className="w-4 h-4"/>
+                                    {contact.email}
+                                </div>                                      
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
