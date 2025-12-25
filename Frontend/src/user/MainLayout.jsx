@@ -38,7 +38,7 @@ function MainLayout() {
 
     const contacts = [
         {name: "Sarah Connor", relation: "Spouse", contactNo: "0912 354 4566", email: "sarahconnor@gmail.com"},
-        {name: "John Connor", relation: "Father", contactNo: "0914 344 3631", email: "johnconnor@gmail.com"},
+        {name: "John Connor", relation: "Father", contactNo: "0914 344 3631", email: "johnconnor@gmail.com"}
     ]
     
     const buttons = [
