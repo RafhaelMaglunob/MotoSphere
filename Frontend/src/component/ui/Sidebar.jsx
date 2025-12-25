@@ -28,7 +28,7 @@ function Sidebar({
           fixed top-0 left-0 h-screen z-40 transform transition-transform duration-300
           ${showSidebar ? "translate-x-0" : "-translate-x-full"} 
           md:translate-x-0 md:sticky md:top-0 md:h-screen
-          ${isMdHidden ? "hidden" : ""}
+          ${isMdHidden ? "md:hidden" : ""}
         `}
         style={{ padding: padding, backgroundColor: bgColor }}
       >
