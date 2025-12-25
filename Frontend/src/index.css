@@ -1,9 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&display=swap');
 @import "tailwindcss";
+
 body {
   font-family: 'Poppins', sans-serif;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&display=swap');
 
 .alegreya {
   font-family: 'Alegreya', serif;

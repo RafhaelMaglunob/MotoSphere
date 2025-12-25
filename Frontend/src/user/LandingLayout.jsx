@@ -32,7 +32,7 @@ function LandingLayout() {
     ];
 
     const footerContent = (
-        <div className="flex flex-col px-5">
+        <div className="flex flex-col px-5 mt-auto">
             <div className="text-green-500 text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
                 <FiLogIn className="w-6 h-6 text-green-500" />
                 <h1>Login</h1>
@@ -56,7 +56,7 @@ function LandingLayout() {
                         <img src={MotoSphere_Logo} alt="MotoSphere" />
                         <h1 className="text-white text-xl font-bold">MotoSphere</h1>
                     </div>
-                    <nav className="flex flex-row gap-8 text-white text-lg font-semibold">
+                    <nav className="flex flex-row md:text-sm gap-8 text-white lg:text-lg font-semibold">
                         {buttons.map((btn, idx) => (
                             <NavLink
                                 key={idx}

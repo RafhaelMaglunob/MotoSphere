@@ -10,11 +10,11 @@ function Mission() {
             <NavLink to="/about-us">
                 <BackIcon className="text-white w-13 h-10" />
             </NavLink>
-            <div className="flex flex-col md:flex-row items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 place-items-center">
                 <img src={Helmet} alt="Helmet" className="w-150"/>
                 <div className="text-white alegreya">
-                    <h1 className="text-sm">OUR MISSION</h1>
-                    <span className="font-semibold md:text-5xl leading-[1.4]">
+                    <h1 className="text-xl md:text-sm">OUR MISSION</h1>
+                    <span className="font-semibold text-3xl md:text-5xl leading-[1.4]">
                         Build the future of rider safety <br/>through smart helmet <br/>technology that detects <br/>accidents and automatically <br/>informs emergency contacts.
                     </span>
                 </div>
