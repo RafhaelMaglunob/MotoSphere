@@ -47,6 +47,13 @@ function MainLayout() {
         {icon: DevicesIcon, name: "Notifications", path: "/user/notifications"},
         {icon: SettingsIcon, name: "Settings", path: "/user/settings"}
     ]
+
+    const notifications = [
+        {type: "alerts", name: "Possible Accident Detected", description: "Sensors detected a sudden impact. Emergency contacts were notified.", time: 12312312},
+        {type: "updates", name: "Firmware Update Available", description: "A new firmware version (v2.4.1) is available for your helmet.", time: 21},
+        {type: "summary", name: "Ride Summary", description: "Your ride to Downtown took 45 minutes. Distance: 12.4km.", time: 21312},
+        {type: "alerts", name: "Possible Accident Detected", description: "Sensors detected a sudden impact. Emergency contacts were notified.", time: 1220}
+    ]
     
     const activeButton = buttons.find(
         btn => location.pathname.startsWith(btn.path)
@@ -111,7 +118,8 @@ function MainLayout() {
                         lastSynced: formatLastSynced(lastSynced),
                         isConnected: isConnected,
                         sensors: sensors,
-                        contacts: contacts
+                        contacts: contacts,
+                        notifications: notifications
 
                      }}/>
                 </main>
