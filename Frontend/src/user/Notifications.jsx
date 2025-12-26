@@ -19,7 +19,7 @@ function formatTime(minutesAgo) {
 }
 
 function Notifications() {
-  const { notifications } = useOutletContext();
+  const { notifications, isLight } = useOutletContext();
   const [isActive, setActive] = useState("all");
   const [isHover, setHover] = useState("false");
   const buttons = [
@@ -28,14 +28,22 @@ function Notifications() {
     { name: "Alerts", type: "alerts" },
     { name: "Updates", type: "updates" }
   ]
+
+  const handleClearNotification = (index) => {
+    // Add backend for clearing all notification of the target user (using the 'User ID')
+  }
+
   return (
-    <div className="p-3">
+    <div className="md:p-3">
       <div className="flex flex-row w-full justify-between items-center">
         <div>
-          <h1 className='text-white text-2xl md:text-3xl font-semibold tracking-wide'>Notifications</h1>
-          <span className="text-[#9BB3D6] text-xs md:text-sm">Stay updated with your helmet's activity.</span>
+          <h1 className={`${isLight ? "text-black" : "text-white"} text-2xl md:text-3xl font-semibold tracking-wide`}>Notifications</h1>
+          <span className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs md:text-sm`}>Stay updated with your helmet's activity.</span>
         </div>
+
+        {/* Button for Clearing All Notifications */}
         <button
+          onClick={(handleClearNotification)}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           className='flex flex-row gap-3 text-[#9BB3D6] text-sm cursor-pointer hover:text-[#dcdddfff]'>
@@ -44,40 +52,49 @@ function Notifications() {
         </button>
       </div>
 
+
+      {/* Filter for Notifications (All, updates, summary, and alerts) */}
       <div className="text-[#9BB3D6] text-sm flex flex-row mt-10 grid grid-cols-[repeat(auto-fit,minmax(100px,1fr))] md:flex flex-row">
         {buttons.map((btn, index) => (
           <button
             key={index}
             onClick={() => setActive(btn.type)}
             className={`
-                text-[#9BB3D6] border-b border-b-[#22D3EE] px-7 pb-4 min-w-27 cursor-pointer
-                ${isActive === btn.type ? "text-[#22D3EE]" : "border-b-transparent"}  
-              `}
+              border-b-3 border-b-[#22D3EE] px-7 pb-4 min-w-27 cursor-pointer font-bold
+              ${isActive === btn.type
+                  ? "text-[#22D3EE]"
+                  : isLight
+                    ? "text-black"
+                    : "text-[#9BB3D6]"
+                }
+              ${isActive !== btn.type ? "border-b-transparent" : ""}
+            `}
           >
             {btn.name}
           </button>
         ))}
       </div>
 
+
+      {/* Notifications */}
       <div className="grid grid-cols-1 gap-3 mt-9">
         {[...notifications]
           .filter(notif => isActive === "all" ? true : notif.type === isActive)
           .sort((a, b) => a.time - b.time)
-          .map((notif, index) => 
+          .map((notif, index) =>
           (
-            <div key={index} className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-5 md:gap-0 md:flex md:flex-row w-full md:justify-between bg-[#0F2A52] px-6 py-4 rounded-2xl cursor-pointer hover:bg-gray-900/20">
-              <div className="md:flex md:flex-row md:gap-3 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-5">
-                <div 
+            <div key={index} className={`${isLight ? "bg-white hover:bg-black/10" : "bg-[#0F2A52] hover:bg-gray-900/20" } grid grid-cols-1 gap-5 md:gap-0 md:flex sm:flex-row w-full md:justify-between px-6 py-4 rounded-2xl cursor-pointer`}>
+              <div className="flex flex-row gap-5">
+                <div
                   className={` 
                       p-4 rounded-xl h-fit w-fit
-                      ${
-                        notif.type === "alerts" ? "bg-[#EF4444]/10"
-                        :
-                        notif.type === "summary" ? "bg-[#22C55E]/10"
+                      ${notif.type === "alerts" ? "bg-[#EF4444]/10"
+                      :
+                      notif.type === "summary" ? "bg-[#22C55E]/10"
                         :
                         notif.type === "updates" ? "bg-[#06B6D4]/10"
-                        :
-                        "bg-gray-800/60"
+                          :
+                          "bg-gray-800/60"
                     }`
                   }
                 >
@@ -85,18 +102,18 @@ function Notifications() {
                   <CheckMark className={`${notif.type === "summary" ? "block" : "hidden"} text-[#4ADE80]`} />
                   <InfoCircle className={`${notif.type === "updates" ? "block" : "hidden"} text-[#22D3EE]`} />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <h1 className="text-white text-md md:text-lg font-semibold">{notif.name}</h1>
-                  <span className="text-xs text-[#9BB3D6]">{notif.description}</span>
+                <div className="flex flex-col gap-2 w-full ">
+                  <h1 className={`${isLight ? "text-black" : "text-white"} text-md md:text-lg font-semibold`}>{notif.name}</h1>
+                  <span className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs`}>{notif.description}</span>
                 </div>
               </div>
               <div className="flex flex-row gap-2 justify-end">
-                <ClockIcon className="text-[#9BB3D6]" />
-                <span className="text-[#9BB3D6] text-xs">{formatTime(notif.time)}</span>
+                <ClockIcon className={isLight ? "text-black" : "text-[#9BB3D6]"} />
+                <span className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs`}>{formatTime(notif.time)}</span>
               </div>
             </div>
           )
-        )}
+          )}
       </div>
     </div>
   )
