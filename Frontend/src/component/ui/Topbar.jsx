@@ -1,7 +1,7 @@
 import React from "react";
 import { AiOutlineMenu } from "react-icons/ai";
 
-function Topbar({ height = 40, bgColor = "#050816", onBurgerClick, children, isMdHidden = false }) {
+function Topbar({ height = 40, bgColor = "#050816", onBurgerClick, children, isMdHidden = false, isLight }) {
     return (
         <div className={`${isMdHidden ? "md:hidden" : "flex"}`} >
             <div
@@ -11,7 +11,7 @@ function Topbar({ height = 40, bgColor = "#050816", onBurgerClick, children, isM
                 {/* Burger icon for mobile */}
                 <AiOutlineMenu
                     onClick={onBurgerClick}
-                    className=" text-white text-2xl cursor-pointer md:hidden"
+                    className={`${isLight ? "text-black" : "text-white"} text-2xl cursor-pointer md:hidden`}
                 />
 
                 {/* Center / right content */}

@@ -10,6 +10,7 @@ function Sidebar({
   setShowSidebar, 
   children, 
   footer,
+  isLight,
   isMdHidden = false
 }) {
   return (
@@ -48,11 +49,15 @@ function Sidebar({
                 key={index}
                 to={btn.path}
                 className={({ isActive }) =>
-                  `block p-4 rounded-xl flex gap-4 mb-1 ${
-                    isActive
-                      ? "bg-[#06B6D4]/20 text-[#22D3EE]"
-                      : "text-[#9BB3D6] hover:bg-[#06B6D4]/10 hover:text-[#22D3EE]"
+                  `block p-4 rounded-xl flex gap-4 mb-1 
+                  ${isActive
+                      ? 
+                        isLight ? "bg-black/20 text-black" 
+                        : "bg-[#06B6D4]/20 text-[#22D3EE]"
+                          : isLight ? "text-black/50 hover:text-black hover:bg-black/10" 
+                          : "text-[#9BB3D6] hover:bg-[#06B6D4]/10 hover:text-[#22D3EE]"
                   }`
+                  
                 }
                 onClick={() => setShowSidebar(false)}
               >

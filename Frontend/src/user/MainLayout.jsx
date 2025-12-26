@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Outlet, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from 'react'
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
 
@@ -24,12 +24,24 @@ function formatLastSynced(minutesAgo) {
 }
 
 function MainLayout() {
+    const [isLight, setIsLight] = useState(() => {
+        const saved = localStorage.getItem("isLight");
+        return saved ? JSON.parse(saved) : false;
+    })
+
+    const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const location = useLocation();
     const Username = "Alex Johnson"
+    const email = "alexjohnson@gmail.com"
     const deviceNo = "MK-II"
     const lastSynced = "2"
     const isConnected = false
+
+    useEffect(() => {
+        localStorage.setItem("isLight", JSON.stringify(isLight));
+    }, [isLight])
+
     const sensors = [ 
         {type: "Accelerometer", connection: "Active"},
         {type: "Gyroscope", connection: "Inactive"},
@@ -58,31 +70,36 @@ function MainLayout() {
     const activeButton = buttons.find(
         btn => location.pathname.startsWith(btn.path)
     )?.name;
+    
+    const handleLogout = () => {
+
+        navigate("/user-login")
+    }
 
     const footer = (
         <div className="flex flex-col mt-auto px-5">
-            <div className="text-[#F87171] text-sm flex gap-3 pb-6 cursor-pointer">
+            <div className={`${isLight ? "font-bold" : ""}  text-[#F87171] text-sm flex gap-3 pb-6 cursor-pointer`}>
                 <img src={Logout} alt="Logout" />
-                <h1>Log Out</h1>
+                <h1 onClick={handleLogout}>Log Out</h1>
             </div>
         </div>
-
     )
 
     return (
-        <div className="bg-[#0A1A3A] flex flex-row min-h-screen">
+        <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0A1A3A]"} flex flex-row min-h-screen`}>
             <Sidebar  
                 buttons={buttons} 
-                bgColor='#050816'
+                bgColor={isLight ? '#FFFFFF': '#050816'}
                 showSidebar={showSidebar}
+                isLight={isLight}
                 setShowSidebar={setShowSidebar} 
-                className="absolute w-auto md:flex "
+                className="absolute w-auto md:flex"
                 footer={footer}
             >
-                <div className="flex flex-col space-x-4 items-center mb-7 p-3">
+                <div className="flex flex-col items-center mb-7 p-3">
                     
-                    <img src={MotoSphere_Logo} alt="MotoSphere Logo" />
-                    <h1 className="text-white text-lg font-bold">MotoSphere</h1>
+                    <img src={MotoSphere_Logo} alt="MotoSphere Logo"/>
+                    <h1 className={`text-lg font-bold ${isLight ? "text-black" : "text-white"}`}>MotoSphere</h1>
                 </div>
             </Sidebar>
             
@@ -91,19 +108,20 @@ function MainLayout() {
                 {/* Topbar */}
                 <Topbar
                     onBurgerClick={() => setShowSidebar(true)}
-                    bgColor='#050816'
+                    bgColor={isLight ? "#FFF" : '#050816'}
+                    isLight={isLight}
                     height={60}
                 >   
                     <div className="flex flex-row justify-between w-full place-items-center">
-                        <span className="text-white font-semibold text-sm">
+                        <span className={`${isLight ? "text-black" : "text-white"} font-semibold text-sm`}>
                             {activeButton}
                         </span>
                         <div className="flex flex-row items-center gap-3    ">
                             <div className="flex flex-col">
-                                <span className="text-white text-[12px] font-semibold">{Username}</span>
-                                <span className="text-[#9BB3D6] text-[11px] font-light">Rider</span>
+                                <span className={`${isLight ? "text-black" : "text-white"} text-[12px] font-semibold`}>{Username}</span>
+                                <span className={`${isLight ? "text-black/70" : "text-[#9BB3D6]"} text-[11px] font-light`}>Rider</span>
                             </div>
-                            <div className="p-2 bg-[#0F2A52] rounded-3xl"> 
+                            <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} p-2 rounded-3xl`}> 
                                 <ProfileIconOutline className="text-[#39A9FF]" />
                             </div>
                         </div>
@@ -114,12 +132,15 @@ function MainLayout() {
                 <main className="flex-1 p-6 overflow-x-hidden">
                     <Outlet context={{ 
                         username: Username,
+                        email: email,
                         deviceNo: deviceNo, 
                         lastSynced: formatLastSynced(lastSynced),
                         isConnected: isConnected,
                         sensors: sensors,
                         contacts: contacts,
-                        notifications: notifications
+                        notifications: notifications,
+                        isLight,
+                        setIsLight
 
                      }}/>
                 </main>

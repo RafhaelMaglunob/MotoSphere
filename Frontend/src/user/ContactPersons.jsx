@@ -14,7 +14,7 @@ import EditContactModal from '../component/modal/EditContactModal';
 import ConfirmModal from '../component/modal/ConfirmModal';
 
 function ContactPersons() {
-  const { contacts } = useOutletContext();
+  const { contacts, isLight } = useOutletContext();
   const [isAddModalOpen, setAddModalOpen] = useState(false)
   const [isEditModalOpen, setEditModalOpen] = useState(false)
   const [isConfirmOpen, setConfirmOpen] = useState(false)
@@ -30,22 +30,22 @@ function ContactPersons() {
   return (
     <div className="p-4">
       <div>
-        <h1 className="text-white text-3xl font-semibold">Trusted Contacts</h1>
-        <span className="text-[#9BB3D6] text-sm">Manage who gets notified in case of an emergency.</span>
+        <h1 className={`${isLight ? "text-black" : "text-white"} text-3xl font-semibold`}>Trusted Contacts</h1>
+        <span className={`${isLight ? "text-black/88" : "text-[#9BB3D6]"} text-sm`}>Manage who gets notified in case of an emergency.</span>
       </div>
       <div className="grid md:grid-cols-2 gap-3 mt-6">
         {/* name, relation, contactNo, email */}
         {contacts.map((contact, index) => (
           // This automatically create a contact information container
-          <div key={index} className="w-full min-h-[170px] bg-[#0F2A52] w-100 to-black p-6 rounded-2xl">
+          <div key={index} className={`${isLight ? "bg-white" : "bg-[#0F2A52] to-black"} w-full min-h-[170px] w-100 p-6 rounded-2xl`}>
             <div className="grid grid-cols-4">
               <div className="col-span-3 flex flex-row gap-2">
-                <div className="bg-[#0A1A3A] p-3 w-fit rounded-xl">
-                  <ProfileIconOutline className="text-[#22D3EE] h-9 w-9" />
+                <div className={`${isLight ? "bg-transparent border border-black/30" : "bg-[#0A1A3A]"} p-3 w-fit rounded-xl`}>
+                  <ProfileIconOutline stroke={isLight ? "#000000" : "#22D3EE"} className="h-9 w-9" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h1 className="text-white font-semibold text-md">{contact.name}</h1>
-                  <span className="bg-[#06B6D4]/10 text-[#22D3EE] rounded-md w-fit text-xs px-3 py-1">{contact.relation}</span>
+                  <h1 className={`${isLight ? "text-black" : "text-white"} font-semibold text-md`}>{contact.name}</h1>
+                  <span className={`${isLight ? "bg-[#000000]/20 text-black/88" : "bg-[#06B6D4]/10 text-[#22D3EE]"} rounded-md w-fit text-xs px-3 py-1`}>{contact.relation}</span>
                 </div>
               </div>
 
@@ -56,9 +56,9 @@ function ContactPersons() {
                     setDeleteIndex(index); // store which contact to delete
                     setConfirmOpen(true); // show modal
                   }}
-                  className="bg-[#0A1A3A] p-2 rounded-lg cursor-pointer"
+                  className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg`}
                 >
-                  <DeleteIcon />
+                  <DeleteIcon color={isLight ? "#000" : "#9BB3D6"} />
                 </span>
 
                 <span
@@ -67,19 +67,19 @@ function ContactPersons() {
                     setData(contact)
                   }
                   }
-                  className="bg-[#0A1A3A] p-2 rounded-lg"
+                  className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg`}
                 >
-                  <EditIcon />
+                  <EditIcon color={isLight ? "#000" : "#9BB3D6"} />
                 </span>
               </div>
             </div>
             <div className="flex flex-col gap-2 mt-6">
-              <div className="flex flex-row items-center gap-3 text-[#9BB3D6] text-sm font-light">
-                <PhoneIcon className="w-4 h-4" color="#22D3EE" />
+              <div className={`${isLight ? "text-black/88" : "text-[#9BB3D6]"} flex flex-row items-center gap-3 text-sm font-light`}>
+                <PhoneIcon className="w-4 h-4" color={isLight ? "#000" : "#22D3EE"} />
                 {contact.contactNo}
               </div>
-              <div className="flex flex-row items-center gap-3 text-[#9BB3D6] text-sm font-light">
-                <MailIcon innerColor={"#22D3EE"} borderColor='#22D3EE' className="w-4 h-4" />
+              <div className={`${isLight ? "text-black/88" : "text-[#9BB3D6]"} flex flex-row items-center gap-3 text-sm font-light`}>
+                <MailIcon innerColor={isLight ? "#000" : "#22D3EE"} borderColor={isLight ? "#000" : '#22D3EE'} className="w-4 h-4" />
                 {contact.email}
               </div>
             </div>
@@ -87,12 +87,13 @@ function ContactPersons() {
         ))}
 
         {/* Add Contacts */}
-        <div onClick={() => setAddModalOpen((prev) => !prev)} className="bg-none cursor-pointer p-6 rounded-2xl w-full min-h-[170px] flex flex-col gap-3 items-center justify-center border border-[#334155]">
-          <span className="bg-[#1E293B] rounded-4xl p-4 ">
-            <PlusIcon />
+        <div onClick={() => setAddModalOpen((prev) => !prev)} className={`${isLight ? "bg-white" : "bg-none border border-[#334155]"} cursor-pointer p-6 rounded-2xl w-full min-h-[170px] flex flex-col gap-3 items-center justify-center`}>
+          <span className={`${isLight ? "bg-black/20" : "bg-[#1E293B]"} rounded-4xl p-4 `}>
+            <PlusIcon color="rgba(0,0,0,0.7)"
+            />
           </span>
-          <h1 className="text-[#94A3B8] font-semibold text-md">Add New Contact</h1>
-          <span className="text-gray-500 text-xs">Up to 5 contacts allowed</span>
+          <h1 className={`${isLight ? "text-black/80" : "text-[#94A3B8]"} font-semibold text-md`}>Add New Contact</h1>
+          <span className={`${isLight ? "text-[#475569]" : "text-gray-500"} text-xs`}>Up to 5 contacts allowed</span>
         </div>
       </div>
 
