@@ -90,4 +90,24 @@ function Login() {
     )
 }
 
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+
+const readStatus = async () => {
+  const ref = doc(db, "app_status", "main");
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    console.log("🔥 Firebase connected!");
+    console.log("Data:", snap.data());
+  } else {
+    console.log("❌ Document does not exist");
+  }
+};
+
+readStatus();
+
+
+
+
 export default Login
