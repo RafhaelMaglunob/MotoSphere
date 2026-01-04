@@ -19,7 +19,7 @@ import UserNotifications from "./user/Notifications";
 
 /* Landing Page */
 import LandingLayout from "./user/LandingLayout";
-import Home from "./user/home";
+import Home from "./user/Home";
 import AboutUs from "./user/AboutUs";
 import WhyMotoSphere from "./user/WhyMotoSphere";
 import HardwareVideo from "./user/HardwareVideo";
