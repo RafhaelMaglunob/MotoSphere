@@ -72,7 +72,6 @@ function MainLayout() {
     )?.name;
     
     const handleLogout = () => {
-
         navigate("/user-login")
     }
 
@@ -97,15 +96,12 @@ function MainLayout() {
                 footer={footer}
             >
                 <div className="flex flex-col items-center mb-7 p-3">
-                    
                     <img src={MotoSphere_Logo} alt="MotoSphere Logo"/>
                     <h1 className={`text-lg font-bold ${isLight ? "text-black" : "text-white"}`}>MotoSphere</h1>
                 </div>
             </Sidebar>
             
-            {/*Content like Dashboard,  Users, Devices, Settings*/}
             <div className="flex-1 flex flex-col min-w-0">
-                {/* Topbar */}
                 <Topbar
                     onBurgerClick={() => setShowSidebar(true)}
                     bgColor={isLight ? "#FFF" : '#050816'}
@@ -116,7 +112,7 @@ function MainLayout() {
                         <span className={`${isLight ? "text-black" : "text-white"} font-semibold text-sm`}>
                             {activeButton}
                         </span>
-                        <div className="flex flex-row items-center gap-3    ">
+                        <div className="flex flex-row items-center gap-3">
                             <div className="flex flex-col">
                                 <span className={`${isLight ? "text-black" : "text-white"} text-[12px] font-semibold`}>{Username}</span>
                                 <span className={`${isLight ? "text-black/70" : "text-[#9BB3D6]"} text-[11px] font-light`}>Rider</span>
@@ -128,7 +124,8 @@ function MainLayout() {
                     </div>
                 </Topbar>
 
-                {/* Content */}
+                {/* Dito natin inalis ang web-fade-in class para hindi magkaroon ng double animation 
+                    kapag ang bata (UserHome) ay may sariling animation na */}
                 <main className="flex-1 p-6 overflow-x-hidden">
                     <Outlet context={{ 
                         username: Username,
@@ -141,7 +138,6 @@ function MainLayout() {
                         notifications: notifications,
                         isLight,
                         setIsLight
-
                      }}/>
                 </main>
             </div>

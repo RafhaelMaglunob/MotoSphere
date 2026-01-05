@@ -1,6 +1,5 @@
 import React from 'react'
 import { useOutletContext } from 'react-router-dom'
-
 import { Shield } from '../component/svg/Shield';
 import { BatteryIcon } from '../component/svg/BatteryIcon';
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline';
@@ -10,19 +9,19 @@ import MailIcon from '../component/svg/MailIcon';
 function UserHome() {
     const { username, deviceNo, lastSynced, isConnected, sensors, contacts, isLight } = useOutletContext();
     const firstName = username?.trim().split(/\s+/)[0];
+    
     return (
         <div>
             <div className="md:py-3 md:px-10">
-                {/* Welcoming for Users */}
-                <div className={`${isLight ? "bg-white" : "bg-[#050816]/80"} flex flex-col gap-3 px-8 py-5 rounded-2xl`}>
+                
+                {/* WELCOME BOX */}
+                <div className={`${isLight ? "bg-white" : "bg-[#050816]/80"} web-fade-in delay-1 flex flex-col gap-3 px-8 py-5 rounded-2xl`}>
                     <h1 className={`${isLight ? "text-black" : "text-white"} text-2xl font-semibold tracking-wide`}>Welcome back, {firstName}</h1>
                     <span className={`${isLight ? "text-black/75" : "text-[#9BB3D6]"} text-sm`}>Your helmet is connected and systems are optimal.</span>
                 </div>
 
-                {/* Checking its connection on the device's */}
-                <div className="grid grid-cols-1 md:grid-cols-5 mt-5 md:mt-8 gap-7">
-
-                    {/* Connection for the device */}
+                {/* HELMET STATUS */}
+                <div className="web-fade-in delay-2 grid grid-cols-1 md:grid-cols-5 mt-5 md:mt-8 gap-7">
                     <div className={`${isLight? "bg-white" : "bg-[#050816]/80"} col-span-3 px-8 py-5 rounded-2xl flex flex-col`}>
                         <div className="grid md:grid-cols-3 grid-cols-1">
                             <div className="col-span-2 flex flex-row items-center gap-3">
@@ -31,25 +30,16 @@ function UserHome() {
                                 </div>
                                 <div>
                                     <h1 className={`${isLight ? "text-black" : "text-[#FFFFFF]"} font-semibold text-lg`}>Smart Helmet {deviceNo}</h1>
-                                    <span className={`${isLight ? "text-black/75" : "text-[#9BB3D6]"} text-[11px]`}>Last synced:: {lastSynced} </span>
+                                    <span className={`${isLight ? "text-black/75" : "text-[#9BB3D6]"} text-[11px]`}>Last synced: {lastSynced} </span>
                                 </div>
                             </div>
                             <div className="flex justify-end">
-                                <div
-                                    className={`
-                                        flex text-xs font-medium w-fit h-fit px-3 py-1 rounded-2xl
-                                        ${isConnected ?
-                                            "bg-[#4EBC34]/10 text-[#22C55E]/30"
-                                            :
-                                            "bg-red-600/20 text-red-600/80"}`
-                                    }
-                                >
+                                <div className={`flex text-xs font-medium w-fit h-fit px-3 py-1 rounded-2xl ${isConnected ? "bg-[#4EBC34]/10 text-[#22C55E]" : "bg-red-600/20 text-red-600"}`}>
                                     {isConnected ? "Connected" : "Not Connected"}
                                 </div>
                             </div>
                         </div>
                         <div className="mt-5 grid grid-cols-2 gap-2 items-stretch">
-                            {/* Battery */}
                             <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} flex-1 p-4 rounded-lg flex flex-col`}>
                                 <div className={`${isLight ? "text-black" : "text-[#9BB3D6]"} flex flex-row items-center gap-3`}>
                                     <BatteryIcon className="w-4 h-4" />
@@ -57,8 +47,6 @@ function UserHome() {
                                 </div>
                                 <h1 className={`${isLight ? "text-black" : "text-white"} mt-4 font-medium text-lg`}>94%</h1>
                             </div>
-
-                            {/* Sensors */}
                             {sensors.map((sensor, index) => (
                                 <div key={index} className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} flex-1 p-4 rounded-lg flex flex-col`}>
                                     <div className={`${isLight ? "text-black" : "text-[#9BB3D6]"} flex flex-row items-center gap-3`}>
@@ -69,43 +57,42 @@ function UserHome() {
                                 </div>
                             ))}
                         </div>
-
-
                     </div>
-
-                    {/* Live Tracking */}
                     <div className={`${isLight ? "bg-white" : "bg-[#050816]/80"} col-span-2 px-8 py-5 rounded-2xl`}>
-
+                        {/* Map content */}
                     </div>
                 </div>
 
-                <h1 className={`${isLight ? "text-black" : "text-white" } font-semibold mt-6`}>Trusted Contacts</h1>
-                <div className="p-3 grid md:grid-cols-3 gap-3 ">
-                    {/* name, relation, contactNo, email */}
-                    {contacts.map((contact, index) => (
-                        <div key={index} className={`${isLight ? "bg-white" : "bg-[#050816]/80"} flex-1 p-6 rounded-2xl`}>
-                            <div className="flex flex-row gap-3">
-                                <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]/75"} p-3 rounded-xl`}>
-                                    <ProfileIconOutline className="text-[#0A1A3A]/30 h-9 w-9"/>
+                {/* CONTACTS */}
+                <div className="web-fade-in delay-3">
+                    <h1 className={`${isLight ? "text-black" : "text-white" } font-semibold mt-6`}>Trusted Contacts</h1>
+                    <div className="p-3 grid md:grid-cols-3 gap-3 ">
+                        {contacts.map((contact, index) => (
+                            <div key={index} className={`${isLight ? "bg-white" : "bg-[#050816]/80"} flex-1 p-6 rounded-2xl`}>
+                                <div className="flex flex-row gap-3">
+                                    <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]/75"} p-3 rounded-xl`}>
+                                        <ProfileIconOutline className="text-[#0A1A3A]/30 h-9 w-9"/>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <h1 className={`${isLight ? "text-black" : "text-white"} font-semibold text-md`}>{contact.name}</h1>
+                                        <span className="bg-[#39A9FF]/10 text-[#39A9FF] rounded-md w-fit text-xs px-3 py-1">{contact.relation}</span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <h1 className={`${isLight ? "text-black" : "text-white"} font-semibold text-md`}>{contact.name}</h1>
-                                    <span className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]/75"} text-[#39A9FF] rounded-md w-fit text-xs px-3 py-1`}>{contact.relation}</span>
+                                <div className="flex flex-col gap-2 mt-6">
+                                    <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
+                                        <PhoneIcon color={isLight ? "black" : '#39A9FF'} className="w-4 h-4"/>
+                                        {contact.contactNo}
+                                    </div>   
+                                    <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
+                                        <MailIcon innerColor={isLight ? "black" : '#007BFF'} innerOpacity={0.7} borderColor={isLight ? "black" : '#39A9FF'} borderOpacity={0.7} className="w-4 h-4"/>
+                                        {contact.email}
+                                    </div>                                     
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-2 mt-6">
-                                <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
-                                    <PhoneIcon color={isLight ? "black" : '#39A9FF'} className="w-4 h-4"/>
-                                    {contact.contactNo}
-                                </div>   
-                                <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
-                                    <MailIcon innerColor={isLight ? "black" : '#007BFF'} innerOpacity={0.7} borderColor={isLight ? "black" : '#39A9FF'} borderOpacity={0.7} className="w-4 h-4"/>
-                                    {contact.email}
-                                </div>                                      
-                            </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
+
             </div>
         </div>
     )
