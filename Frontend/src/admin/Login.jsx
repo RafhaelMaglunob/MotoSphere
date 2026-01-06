@@ -1,7 +1,8 @@
 import React,{ useState } from 'react'
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
-import { login } from '../services/authService';
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
 import Shield from "../component/img/Shield.png"
 
@@ -26,18 +27,63 @@ function Login() {
         setIsLoading(true);
         
         try {
-            const result = await login(username, password, 'admin');
-            
-            if (result.success) {
+            const adminsRef = collection(db, "Admins");
+            const snapshot = await getDocs(adminsRef);
+
+            let matchedAdmin = null;
+            const enteredId = username.trim().toLowerCase();
+            const enteredPassword = String(password);
+
+            console.log("🔍 Admin login attempt:", { enteredId });
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+
+                // Be flexible with field names and casing
+                const docUsername = (data.Username || data.username || "").toLowerCase();
+                const docEmail = (data.Email || data.email || "").toLowerCase();
+                const docPassword = String(data.Password || data.password || "");
+
+                const idMatch =
+                    docUsername === enteredId || docEmail === enteredId;
+                const passwordMatch = docPassword === enteredPassword;
+
+                console.log("Doc checked:", {
+                    id: doc.id,
+                    docUsername,
+                    docEmail,
+                    hasPassword: !!docPassword,
+                    idMatch,
+                    passwordMatch,
+                });
+
+                if (idMatch && passwordMatch) {
+                    matchedAdmin = { id: doc.id, ...data };
+                }
+            });
+
+            if (matchedAdmin) {
+                // Save admin session so AdminRoute sees them as admin
+                localStorage.setItem(
+                    "currentUser",
+                    JSON.stringify({
+                        id: matchedAdmin.id,
+                        username: matchedAdmin.Username || matchedAdmin.Email,
+                        email: matchedAdmin.Email,
+                        userType: "admin",
+                        ...matchedAdmin,
+                    }),
+                );
+
                 // Successful login - navigate to admin dashboard
-                navigate("/admin/dashboard");
+                navigate("/admin/dashboard", { replace: true });
             } else {
                 // Show error message
-                setError(result.error || 'Invalid credentials. Please try again.');
+                setError("Invalid admin username/email or password.");
             }
         } catch (err) {
             setError('An unexpected error occurred. Please try again.');
-            console.error('Login error:', err);
+            console.error('Admin login error:', err);
         } finally {
             setIsLoading(false);
         }

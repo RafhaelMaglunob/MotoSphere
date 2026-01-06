@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
+import ProtectedRoute from "./ProtectedRoute";
+import GuestRoute from "./GuestRoute";
+import AdminRoute from "./AdminRoute";
 
 /* Admin Page */
 import AdminLogin from "./admin/Login";
@@ -33,35 +36,44 @@ function App() {
         {/* Admin Login */}
         <Route path="/admin-login" element={<AdminLogin />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="devices" element={<AdminDevices />} />
-          <Route path="settings" element={<AdminSettings />} />
+        {/* Admin Routes - Admin only */}
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="devices" element={<AdminDevices />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
         </Route>
 
-        {/* User Login */}
-        <Route path="/user-login" element={<UserLogin />} />
+        {/* Public / Guest-only routes (login + landing). 
+            If logged in, GuestRoute will push user back to /user/home. */}
+        <Route element={<GuestRoute />}>
+          {/* User Login */}
+          <Route path="/user-login" element={<UserLogin />} />
 
-        {/* Landing Routes */}
-        <Route element={<LandingLayout />}>
-          <Route path="home" element={<Home />} />
-          <Route path="about-us" element={<AboutUs />} />
-          <Route path="why-motosphere" element={<WhyMotoSphere />} />
-          <Route path="hardware-video" element={<HardwareVideo />} />
+          {/* Landing Routes */}
+          <Route element={<LandingLayout />}>
+            <Route path="home" element={<Home />} />
+            <Route path="about-us" element={<AboutUs />} />
+            <Route path="why-motosphere" element={<WhyMotoSphere />} />
+            <Route path="hardware-video" element={<HardwareVideo />} />
+          </Route>
+
+          {/* Other public info pages */}
+          <Route path="mission" element={<Mission />} />
+          <Route path="learn-more" element={<LearnMore />} />
         </Route>
         
-        {/* User Routes */}
-        <Route path="/user" element={<UserLayout />}>
-          <Route path="home" element={<UserHome />} />
-          <Route path="contact-persons" element={<UserContactPersons />} />
-          <Route path="notifications" element={<UserNotifications />} />
-          <Route path="settings" element={<UserSettings />} />
+        {/* User Routes - Protected */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/user" element={<UserLayout />}>
+            <Route path="home" element={<UserHome />} />
+            <Route path="contact-persons" element={<UserContactPersons />} />
+            <Route path="notifications" element={<UserNotifications />} />
+            <Route path="settings" element={<UserSettings />} />
+          </Route>
         </Route>
-        <Route path="mission" element={<Mission />} />
-        <Route path="learn-more" element={<LearnMore />} />
-
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/home" />} />
       </Routes>

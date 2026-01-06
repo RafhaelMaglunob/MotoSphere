@@ -1,8 +1,7 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+const API_URL = import.meta?.env?.VITE_API_URL || "http://localhost:4000";
 
 /**
- * Authenticates a user by checking credentials against Firebase Firestore
+ * Authenticates a user by posting credentials to the backend
  * @param {string} enteredUsername - The username or email entered by the user
  * @param {string} enteredPassword - The password entered by the user
  * @param {string} userType - 'user' or 'admin' to determine which collection to check
@@ -27,89 +26,53 @@ export async function login(enteredUsername, enteredPassword, userType = 'user')
   }
 
   try {
-    // Determine which collection to query
-    const collectionName = userType === 'admin' ? 'Admins' : 'Users';
-    const usersRef = collection(db, collectionName);
-    
-    let matchingUser = null;
-    const trimmedUsername = enteredUsername.trim();
-    
-    try {
-      // Try to use Firestore queries first (more efficient)
-      const usernameQuery = query(usersRef, where('Username', '==', trimmedUsername));
-      const emailQuery = query(usersRef, where('Email', '==', trimmedUsername));
-      
-      // Execute both queries
-      const [usernameSnapshot, emailSnapshot] = await Promise.all([
-        getDocs(usernameQuery),
-        getDocs(emailQuery)
-      ]);
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: enteredUsername.trim(),
+        password: enteredPassword,
+        userType,
+      }),
+    });
 
-      // Check username matches
-      if (!usernameSnapshot.empty) {
-        usernameSnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.Password === enteredPassword) {
-            matchingUser = { id: doc.id, ...data };
-          }
-        });
-      }
-      
-      // Check email matches if username didn't match
-      if (!matchingUser && !emailSnapshot.empty) {
-        emailSnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.Password === enteredPassword) {
-            matchingUser = { id: doc.id, ...data };
-          }
-        });
-      }
-    } catch (queryError) {
-      // Fallback: If queries fail (e.g., missing indexes), fetch all documents
-      console.warn("Query failed, falling back to fetching all documents:", queryError);
-      const snapshot = await getDocs(usersRef);
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const usernameMatch = data.Username === trimmedUsername;
-        const emailMatch = data.Email === trimmedUsername;
-        const passwordMatch = data.Password === enteredPassword;
-        
-        if ((usernameMatch || emailMatch) && passwordMatch) {
-          matchingUser = { id: doc.id, ...data };
-        }
-      });
-    }
+    const data = await response.json();
 
-    if (matchingUser) {
-      // Store user data in localStorage for session management
-      localStorage.setItem('currentUser', JSON.stringify({
-        id: matchingUser.id,
-        username: matchingUser.Username || matchingUser.Email,
-        email: matchingUser.Email,
-        userType: userType,
-        ...matchingUser
-      }));
-      
-      return {
-        success: true,
-        user: matchingUser,
-        error: null
-      };
-    } else {
+    if (!response.ok || !data.success) {
       return {
         success: false,
         user: null,
-        error: "Invalid username/email or password"
+        error: data?.error || "Invalid username/email or password",
       };
     }
 
+    const user = data.user || {};
+    const resolvedUserType =
+      user.userType || user.user_type || user.role || userType;
+
+    // Store user data in localStorage for session management
+    localStorage.setItem(
+      "currentUser",
+      JSON.stringify({
+        id: user.id,
+        username: user.Username || user.Email,
+        email: user.Email,
+        userType: resolvedUserType,
+        ...user,
+      }),
+    );
+
+    return {
+      success: true,
+      user,
+      error: null,
+    };
   } catch (error) {
-    console.error("Firestore error:", error);
+    console.error("Login request error:", error);
     return {
       success: false,
       user: null,
-      error: "An error occurred during login. Please try again."
+      error: "An error occurred during login. Please try again.",
     };
   }
 }

@@ -1,7 +1,7 @@
-import React,{ useState } from 'react'
+import React,{ useState, useEffect } from 'react'
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
-import { login } from '../services/authService';
+import { login, isAuthenticated } from '../services/authService';
 
 import { GoogleIcon } from '../component/svg/GoogleIcon';
 
@@ -13,6 +13,13 @@ function Login() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+
+    // If already logged in, prevent accessing the login page (e.g., via back button)
+    useEffect(() => {
+        if (isAuthenticated()) {
+            navigate("/user/home", { replace: true });
+        }
+    }, [navigate]);
     
     const handleLogin = async (e) => {
         e?.preventDefault();
@@ -30,8 +37,9 @@ function Login() {
             const result = await login(username, password, 'user');
             
             if (result.success) {
-                // Successful login - navigate to user home
-                navigate("/user/home");
+                // Regular user login always goes to user side.
+                // Admins must use the admin login page.
+                navigate("/user/home", { replace: true });
             } else {
                 // Show error message
                 setError(result.error || 'Invalid credentials. Please try again.');
@@ -83,7 +91,6 @@ function Login() {
                                 disabled={isLoading}
                             />
                         </div>
-``
                         <div className="flex flex-col items-start w-full mt-6 gap-2">
                             <label className="text-sm text-[#9BB3D6]">Password</label>
                             <div className="relative w-full">

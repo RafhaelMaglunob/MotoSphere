@@ -9,7 +9,15 @@ import MailIcon from '../component/svg/MailIcon';
 
 function UserHome() {
     const { username, deviceNo, lastSynced, isConnected, sensors, contacts, isLight } = useOutletContext();
-    const firstName = username?.trim().split(/\s+/)[0];
+
+    // Derive a friendly first name:
+    // - if username looks like an email, take the part before '@'
+    // - then take the first word in case of full names
+    const baseName = username || "";
+    const nameWithoutDomain = baseName.includes("@")
+        ? baseName.split("@")[0]
+        : baseName;
+    const firstName = nameWithoutDomain.trim().split(/\s+/)[0] || "Rider";
     return (
         <div>
             <div className="md:py-3 md:px-10">

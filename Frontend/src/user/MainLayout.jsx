@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
+import { getCurrentUser, logout as authLogout } from '../services/authService';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
@@ -32,8 +33,18 @@ function MainLayout() {
     const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const location = useLocation();
-    const Username = "Alex Johnson"
-    const email = "alexjohnson@gmail.com"
+
+    const [userProfile, setUserProfile] = useState(() => getCurrentUser());
+
+    // Derive display name and email from stored user profile
+    const rawUsername = userProfile?.Username || userProfile?.username || "";
+    const rawEmail = userProfile?.Email || userProfile?.email || "";
+
+    // If there's no explicit Username, derive a label from email before '@'
+    const derivedFromEmail = rawEmail ? rawEmail.split("@")[0] : "";
+    const displayNameSource = rawUsername || derivedFromEmail || "Rider";
+    const Username = displayNameSource;
+    const email = rawEmail || "rider@example.com";
     const deviceNo = "MK-II"
     const lastSynced = "2"
     const isConnected = false
@@ -41,6 +52,14 @@ function MainLayout() {
     useEffect(() => {
         localStorage.setItem("isLight", JSON.stringify(isLight));
     }, [isLight])
+
+    // Keep user profile in sync in case it changes (e.g., on login)
+    useEffect(() => {
+        const stored = getCurrentUser();
+        if (stored) {
+            setUserProfile(stored);
+        }
+    }, []);
 
     const sensors = [ 
         {type: "Accelerometer", connection: "Active"},
@@ -72,8 +91,8 @@ function MainLayout() {
     )?.name;
     
     const handleLogout = () => {
-
-        navigate("/user-login")
+        authLogout();
+        navigate("/user-login");
     }
 
     const footer = (

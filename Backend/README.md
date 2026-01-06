@@ -1,16 +1,38 @@
-# React + Vite
+# MotoSphere Backend (Auth)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Minimal Express + Firebase Admin server for credential checks against Firestore.
 
-Currently, two official plugins are available:
+## Setup
+1) In `Backend/`, install deps:
+```
+npm install
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+2) Create a `.env` file (same folder) with:
+```
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account@your-project-id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n"
+PORT=4000
+```
+> If the private key comes from JSON, wrap it in quotes and keep `\n`.
 
-## React Compiler
+3) Run the server:
+```
+npm run dev
+```
+It starts on `http://localhost:4000`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## API
+- `POST /login`
+  - body: `{ "identifier": "username or email", "password": "plainText", "userType": "user|admin" }`
+  - success: `{ success: true, user: {...} }`
+  - failure: `{ success: false, error: "message" }` (HTTP 401)
 
-## Expanding the ESLint configuration
+## Collections
+- Users: `Users` collection with fields `Username`, `Email`, `Password`
+- Admins: `Admins` collection with the same fields
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Notes
+- This uses the Firebase Admin SDK (server-side) so credentials are not exposed to the client.
+- Frontend calls `http://localhost:4000/login` (configurable via `VITE_API_URL`).
