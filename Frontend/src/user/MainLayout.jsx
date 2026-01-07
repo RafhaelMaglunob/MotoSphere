@@ -96,7 +96,7 @@ function MainLayout() {
                 footer={footer}
             >
                 <div className="flex flex-col items-center mb-7 p-3">
-                    <img src={MotoSphere_Logo} alt="MotoSphere Logo"/>
+                    <img src={MotoSphere_Logo} className="w-24 h-24 mb-2" alt="MotoSphere Logo"/>
                     <h1 className={`text-lg font-bold ${isLight ? "text-black" : "text-white"}`}>MotoSphere</h1>
                 </div>
             </Sidebar>

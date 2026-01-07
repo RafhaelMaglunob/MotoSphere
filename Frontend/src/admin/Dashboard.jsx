@@ -113,9 +113,9 @@ function Dashboard() {
                                 </div>
                             </div>
                             
-                            <div>
+                            {/*<div>
                                 <button key={index} className="text-[#F87171] bg-[#EF4444]/10 py-2 px-4 rounded-lg">View</button>
-                            </div>
+                            </div>*/}
                        </div>
                     ))}
 
