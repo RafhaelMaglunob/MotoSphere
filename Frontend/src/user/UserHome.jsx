@@ -6,6 +6,8 @@ import { ProfileIconOutline } from '../component/svg/ProfileIconOutline';
 import PhoneIcon from '../component/svg/PhoneIcon';
 import MailIcon from '../component/svg/MailIcon';
 
+import MotoSphere_Logo from '../component/img/MotoSphere Logo.png';
+
 function UserHome() {
     const { username, deviceNo, lastSynced, isConnected, sensors, contacts, isLight } = useOutletContext();
     const firstName = username?.trim().split(/\s+/)[0];
@@ -21,7 +23,7 @@ function UserHome() {
                 </div>
 
                 {/* HELMET STATUS */}
-                <div className="web-fade-in delay-2 grid grid-cols-1 md:grid-cols-5 mt-5 md:mt-8 gap-7">
+                <div className="web-fade-in delay-2 mt-7">
                     <div className={`${isLight? "bg-white" : "bg-[#050816]/80"} col-span-3 px-8 py-5 rounded-2xl flex flex-col`}>
                         <div className="grid md:grid-cols-3 grid-cols-1">
                             <div className="col-span-2 flex flex-row items-center gap-3">
@@ -57,9 +59,6 @@ function UserHome() {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                    <div className={`${isLight ? "bg-white" : "bg-[#050816]/80"} col-span-2 px-8 py-5 rounded-2xl`}>
-                        {/* Map content */}
                     </div>
                 </div>
 

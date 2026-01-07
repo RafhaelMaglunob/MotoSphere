@@ -53,7 +53,7 @@ function LandingLayout() {
                 {/* Header for desktop */}
                 <div className="md:flex hidden flex-row items-center justify-between px-16 py-4">
                     <div className="flex flex-row items-center gap-2">
-                        <img src={MotoSphere_Logo} alt="MotoSphere" />
+                        <img src={MotoSphere_Logo}  className="w-24 h-24" alt="MotoSphere" />
                         <h1 className="text-white text-xl font-bold">MotoSphere</h1>
                     </div>
                     <nav className="flex flex-row md:text-sm gap-8 text-white lg:text-lg font-semibold">

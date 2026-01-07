@@ -12,30 +12,11 @@ function Login() {
     return (
         <div className="h-screen overflow-hidden bg-[url('./component/img/UserLoginCover.png')] bg-[length:100%_100%] bg-no-repeat bg-center">
             <div className="md:h-[100vh] h-screen flex justify-center items-center">
-                <div className="bg-[#0F2A52]/85 p-10 flex flex-col max-h-[580px] scrollbar-thin h-screen flex overflow-auto items-center rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
+                <div className="bg-[#0F2A52]/85 p-10 flex flex-col max-h-[480px] scrollbar-thin h-screen flex overflow-auto items-center rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
                     <h1 className="font-semibold text-white text-2xl mb-3">Login to MotoSphere</h1>
                     <h2 className="text-xs text-[#94A3B8] text-center leading-[1.5]">Access your ride logs, live tracking, and emergency <br />notifications</h2>
 
-                    <div className="flex flex-col gap-3 w-full">
-                        <div className="p-3 cursor-pointer bg-white rounded-xl flex flex-row items-center justify-center space-x-4 mt-7">
-                            <img
-                                src="https://www.google.com/favicon.ico"
-                                alt="Google"
-                                className="w-5 h-5"
-                            />
-                            <span className="text-xs cursor-pointer font-semibold">Continue with Google</span>
-                        </div>
-                        <div className="p-3 cursor-pointer bg-blue-700 rounded-xl flex flex-row items-center justify-center space-x-4">
-                            <img
-                                src="https://www.facebook.com/favicon.ico"
-                                alt="Facebook"
-                                className="w-5 h-5"
-                            />
-                            <span className="text-xs text-white font-semibold">Continue with Facebook</span>
-                        </div>
-                    </div>
-                    <span className="bg-[#0F1729] text-[#94A3B8] text-sm px-4 py-1 mt-3 mb-3">OR</span>
-                    <div className="flex flex-col items-start w-full gap-2">
+                    <div className="flex flex-col items-start w-full gap-2 mt-4">
                         <label className="text-sm text-[#9BB3D6]">Email or Username</label>
                         <input type="text" placeholder="e.g motosphere@example.com" className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-70 md:w-80 px-4 py-3 rounded-lg"></input>
                     </div>
@@ -82,7 +63,7 @@ function Login() {
                     <div className="flex flex-row mt-4 justify-between w-full md:px-4">
                         
                         <label className="text-[#94A3B8] text-xs">Dont have an account yet?</label>
-                        <span className="text-[#22D3EE] text-xs">Create an account</span>
+                        <button onClick={() => navigate("/user-register")} className="text-[#22D3EE] text-xs cursor-pointer">Create an account</button>
                     </div>
                 </div>
             </div>

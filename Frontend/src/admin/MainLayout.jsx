@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Outlet } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
+import { useNavigate } from 'react-router-dom';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
@@ -13,6 +14,7 @@ import { Shield } from "../component/svg/Shield.jsx";
 import Logout from "../component/img/Logout.png";
 
 function MainLayout() {
+    const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const buttons = [
         {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 
@@ -35,7 +37,7 @@ function MainLayout() {
 
             <div className="text-[#F87171] text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
                 <img src={Logout} alt="Logout" />
-                <h1>Log Out</h1>
+                <h1 onClick={() => navigate('/admin-login')}>Log Out</h1>
             </div>
         </div>
     )
@@ -50,7 +52,7 @@ function MainLayout() {
                 footer={footer}
             >
                 <div className="flex flex-row space-x-4 items-center mb-7 p-3">
-                    <img src={MotoSphere_Logo} alt="MotoSphere Logo" />
+                    <img src={MotoSphere_Logo}  className="w-24 h-24" alt="MotoSphere Logo" />
                     <h1 className="text-white text-lg font-bold">Admin Portal</h1>
                 </div>
                 

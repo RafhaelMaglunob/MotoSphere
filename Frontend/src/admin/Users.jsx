@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { FiFilter } from "react-icons/fi";
 import Table from '../component/table/Table';
 
@@ -10,6 +10,8 @@ function formatTimeAgo(secondsAgo) {
 }
 
 function Users() {
+    const [searchQuery, setSearchQuery] = useState("");
+
     const tableColumns = [
         { key: "name", label: "Name", minWidth: '180px' },
         { key: "email", label: "Email", minWidth: '250px' },
@@ -48,6 +50,15 @@ function Users() {
         actions: "Edit"
     }));
 
+    // Filtered data based on search query
+    const filteredData = useMemo(() => {
+        if (!searchQuery) return tableData;
+        return tableData.filter(user => 
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [searchQuery, tableData]);
+
     return (
         <div className="flex flex-col gap-6">
             <h1 className="font-bold text-white text-xl">Users</h1>
@@ -59,23 +70,16 @@ function Users() {
                 <div className="p-4 flex flex-col md:flex-row justify-between bg-[#0F2A52] rounded-lg items-start md:items-center gap-4">
                     <input
                         placeholder="Search users..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="px-5 py-2 bg-[#0A1A3A] text-[#CCCCCC] rounded-lg w-full md:w-72 outline-none focus:ring-2 focus:ring-[#2EA8FF]"
                     />
-                    <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto justify-between md:justify-start">
-                        <button className="flex flex-row gap-2 px-6 py-3 bg-[#0A1A3A] rounded-lg text-white font-light items-center justify-center w-full md:w-auto hover:bg-[#0d2142] transition-colors">
-                            <FiFilter />
-                            <span className="text-base">Filter</span>
-                        </button>
-                        <button className="md:px-6 md:py-3 px-3 py-2 font-semibold bg-[#2EA8FF] text-white rounded-lg w-full md:w-auto hover:bg-[#2596e6] transition-colors">
-                            Add User
-                        </button>
-                    </div>
                 </div>
 
                 {/* Table */}
                 <Table
                     columns={tableColumns}
-                    data={tableData}
+                    data={filteredData}
                     pageSize={5}
                 />
             </div>
