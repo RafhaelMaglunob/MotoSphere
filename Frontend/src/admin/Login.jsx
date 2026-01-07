@@ -27,17 +27,22 @@ function Login() {
         setIsLoading(true);
         
         try {
-            const adminsRef = collection(db, "Admins");
-            const snapshot = await getDocs(adminsRef);
+            // Check Users collection for users with role: "admin"
+            const usersRef = collection(db, "Users");
+            const snapshot = await getDocs(usersRef);
 
             let matchedAdmin = null;
             const enteredId = username.trim().toLowerCase();
             const enteredPassword = String(password);
 
-            console.log("🔍 Admin login attempt:", { enteredId });
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
+
+                // Check if user has admin role
+                const userRole = String(data.role || data.Role || "").toLowerCase();
+                if (userRole !== "admin") {
+                    return; // Skip non-admin users
+                }
 
                 // Be flexible with field names and casing
                 const docUsername = (data.Username || data.username || "").toLowerCase();
@@ -47,15 +52,6 @@ function Login() {
                 const idMatch =
                     docUsername === enteredId || docEmail === enteredId;
                 const passwordMatch = docPassword === enteredPassword;
-
-                console.log("Doc checked:", {
-                    id: doc.id,
-                    docUsername,
-                    docEmail,
-                    hasPassword: !!docPassword,
-                    idMatch,
-                    passwordMatch,
-                });
 
                 if (idMatch && passwordMatch) {
                     matchedAdmin = { id: doc.id, ...data };
@@ -71,6 +67,7 @@ function Login() {
                         username: matchedAdmin.Username || matchedAdmin.Email,
                         email: matchedAdmin.Email,
                         userType: "admin",
+                        role: "admin",
                         ...matchedAdmin,
                     }),
                 );

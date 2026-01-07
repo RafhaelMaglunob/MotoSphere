@@ -37,9 +37,17 @@ function Login() {
             const result = await login(username, password, 'user');
             
             if (result.success) {
-                // Regular user login always goes to user side.
-                // Admins must use the admin login page.
-                navigate("/user/home", { replace: true });
+                // Check the role field from Firebase to determine redirect
+                const userRole = result.user?.role || result.user?.Role || result.user?.userType || 'user';
+                const isAdmin = String(userRole).toLowerCase() === 'admin';
+                
+                if (isAdmin) {
+                    // User has admin role - redirect to admin dashboard
+                    navigate("/admin/dashboard", { replace: true });
+                } else {
+                    // Regular user - redirect to user home
+                    navigate("/user/home", { replace: true });
+                }
             } else {
                 // Show error message
                 setError(result.error || 'Invalid credentials. Please try again.');

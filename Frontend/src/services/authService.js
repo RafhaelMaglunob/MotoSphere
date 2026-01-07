@@ -47,8 +47,9 @@ export async function login(enteredUsername, enteredPassword, userType = 'user')
     }
 
     const user = data.user || {};
-    const resolvedUserType =
-      user.userType || user.user_type || user.role || userType;
+    // Check role field first, then fall back to userType
+    const userRole = String(user.role || user.Role || "").toLowerCase();
+    const resolvedUserType = userRole === "admin" ? "admin" : (user.userType || user.user_type || userType);
 
     // Store user data in localStorage for session management
     localStorage.setItem(
@@ -58,6 +59,7 @@ export async function login(enteredUsername, enteredPassword, userType = 'user')
         username: user.Username || user.Email,
         email: user.Email,
         userType: resolvedUserType,
+        role: userRole || "user",
         ...user,
       }),
     );

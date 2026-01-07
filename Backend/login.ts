@@ -72,10 +72,10 @@ export async function loginWithFirestore({
       return { success: false, error: "Invalid username/email or password" };
     }
 
-    // Determine effective user type based on the collection the doc belongs to
-    const sourceCollection = docSnap.ref.parent.id;
-    const effectiveUserType: UserType =
-      sourceCollection === "Admins" ? "admin" : "user";
+    // Determine effective user type based on the role field in the document
+    // Check for role field (case-insensitive): "admin", "Admin", "ADMIN", etc.
+    const role = String(data?.role || data?.Role || "").toLowerCase();
+    const effectiveUserType: UserType = role === "admin" ? "admin" : "user";
 
     // Sanitize sensitive fields if needed
     const { Password, ...safeUser } = data || {};
@@ -85,6 +85,7 @@ export async function loginWithFirestore({
       user: {
         id: docSnap.id,
         userType: effectiveUserType,
+        role: role || "user",
         ...safeUser,
       },
     };
