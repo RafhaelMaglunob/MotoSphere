@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 
 function Settings() {
-  const { email, username, isLight, setIsLight } = useOutletContext();
+  const { email, username, setUsername, setEmail, isLight, setIsLight } = useOutletContext();
   const [name, setName] = useState(username || "")
   const [ userEmail, setUserEmail ] = useState(email || "")
   
@@ -22,8 +22,9 @@ function Settings() {
   }, [emailNotificationEnabled, notificationEnabled]);
 
   const handleAccountSave = () => {
-    // Backend Logic
-    console.log("save")
+    // Temporarily update parent state (UI-only, lost on refresh)
+    if (setUsername) setUsername(name);
+    if (setEmail) setEmail(userEmail);
   }
 
   return (

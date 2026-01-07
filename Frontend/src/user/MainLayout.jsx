@@ -32,8 +32,8 @@ function MainLayout() {
     const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const location = useLocation();
-    const Username = "Alex Johnson"
-    const email = "alexjohnson@gmail.com"
+    const [username, setUsername] = useState("Alex Johnson")
+    const [email, setEmail] = useState("alexjohnson@gmail.com")
     const deviceNo = "MK-II"
     const lastSynced = "2"
     const isConnected = false
@@ -114,7 +114,7 @@ function MainLayout() {
                         </span>
                         <div className="flex flex-row items-center gap-3">
                             <div className="flex flex-col">
-                                <span className={`${isLight ? "text-black" : "text-white"} text-[12px] font-semibold`}>{Username}</span>
+                                <span className={`${isLight ? "text-black" : "text-white"} text-[12px] font-semibold`}>{username}</span>
                                 <span className={`${isLight ? "text-black/70" : "text-[#9BB3D6]"} text-[11px] font-light`}>Rider</span>
                             </div>
                             <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} p-2 rounded-3xl`}> 
@@ -128,8 +128,10 @@ function MainLayout() {
                     kapag ang bata (UserHome) ay may sariling animation na */}
                 <main className="flex-1 p-6 overflow-x-hidden">
                     <Outlet context={{ 
-                        username: Username,
+                        username: username,
+                        setUsername: setUsername,
                         email: email,
+                        setEmail: setEmail,
                         deviceNo: deviceNo, 
                         lastSynced: formatLastSynced(lastSynced),
                         isConnected: isConnected,

@@ -13,7 +13,8 @@ function formatNumber(number, pattern) {
     return pattern.replace(/#/g, () => number[i++] || "");
 }
 
-function AddContactModal() {
+function AddContactModal({ onAdd, onClose }) {
+    const [name, setName] = useState("");
     const [relation, setRelation] = useState("");
     const [customRelation, setCustomRelation] = useState("");
     const [phone, setPhone] = useState("");
@@ -82,6 +83,7 @@ function AddContactModal() {
 
                     let invalidFields = [];
 
+                    if (!name.trim()) invalidFields.push("Name");
                     if (!phone || errors.phone) invalidFields.push("Contact number");
                     if (!email || errors.email) invalidFields.push("Email");
                     if (!relation) invalidFields.push("Relation");
@@ -98,8 +100,27 @@ function AddContactModal() {
                     // Clear submit error if all is valid
                     setErrors((prev) => ({ ...prev, submit: "" }));
 
-                    // Handle successful submission
-                    console.log("Form submitted:", { phone, email, relation, customRelation });
+                    // Create contact object and pass to parent
+                    const contactData = {
+                        name: name.trim(),
+                        relation: relation === "Other" ? customRelation.trim() : relation,
+                        contactNo: `${philippines.code} ${phone}`,
+                        email: email.trim(),
+                    };
+
+                    // Call the onAdd callback to add the contact temporarily
+                    if (onAdd) {
+                        onAdd(contactData);
+                    }
+
+                    // Reset form
+                    setName("");
+                    setRelation("");
+                    setCustomRelation("");
+                    setPhone("");
+                    setEmail("");
+                    setRawPhone("");
+                    setErrors({ phone: "", email: "" });
                 }}
             >
                 {/* Name */}
@@ -110,6 +131,8 @@ function AddContactModal() {
                         required
                         placeholder="Enter contact's name"
                         className="bg-[#0A1A3A] text-gray-300 rounded-md px-3 py-2 w-full"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                     />
                 </div>
 
