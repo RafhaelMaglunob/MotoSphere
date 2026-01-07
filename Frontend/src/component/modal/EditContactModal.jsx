@@ -8,7 +8,8 @@ const philippines = {
     format: "## #### ####",
 };
 
-function EditContactModal({ data }) {
+function EditContactModal({ data, onSave, onClose }) {
+    const [name, setName] = useState("");
     const [relation, setRelation] = useState("");
     const [customRelation, setCustomRelation] = useState("");
     const [phone, setPhone] = useState("");
@@ -21,6 +22,7 @@ function EditContactModal({ data }) {
     // Populate initial values when `data` changes
     useEffect(() => {
         if (data) {
+            setName(data.name || "");
             setRelation(data.relation === "Other" ? "Other" : data.relation);
             setCustomRelation(data.relation === "Other" ? data.customRelation || "" : "");
             setEmail(data.email || "");
@@ -80,7 +82,15 @@ function EditContactModal({ data }) {
     };
 
     const handleSave = (e) => {
-        // Backend Logic
+        // Build contact object and call onSave (temporary, UI-only)
+        const contactData = {
+            name: name.trim(),
+            relation: relation === "Other" ? customRelation.trim() : relation,
+            contactNo: `${philippines.code} ${phone}`,
+            email: email.trim(),
+        };
+        if (onSave) onSave(contactData);
+        if (onClose) onClose();
     }
 
     return (
@@ -113,7 +123,8 @@ function EditContactModal({ data }) {
                     <input
                         type="text"
                         required
-                        defaultValue={data?.name || ""}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                         placeholder="Enter contact's name"
                         className="bg-[#0A1A3A] text-gray-300 rounded-md px-3 py-2 w-full"
                     />
