@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink } from "react-router-dom";
+import { motion, AnimatePresence } from 'framer-motion'; 
 import Sidebar from '../component/ui/Sidebar';
 import Topbar from '../component/ui/Topbar';
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png';
@@ -41,7 +42,7 @@ function LandingLayout() {
     );
 
     return (
-        <div className="relative min-h-screen flex flex-col">
+        <div className="relative min-h-screen flex flex-col overflow-hidden">
 
             {/* Fixed background image with gradient overlay */}
             <div className="absolute inset-0 bg-[url('./component/img/LandingCover.png')] bg-cover bg-center bg-fixed" />
@@ -52,33 +53,63 @@ function LandingLayout() {
 
                 {/* Header for desktop */}
                 <div className="md:flex hidden flex-row items-center justify-between px-16 py-4">
-                    <div className="flex flex-row items-center gap-2">
+                    
+                    {/* icon Animation */}
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="flex flex-row items-center gap-2"
+                    >
                         <img src={MotoSphere_Logo} alt="MotoSphere" />
                         <h1 className="text-white text-xl font-bold">MotoSphere</h1>
-                    </div>
+                    </motion.div>
+
+                    {/* Staggered Nav Links */}
                     <nav className="flex flex-row md:text-sm gap-8 text-white lg:text-lg font-semibold">
                         {buttons.map((btn, idx) => (
-                            <NavLink
+                            <motion.div
                                 key={idx}
-                                to={btn.path}
-                                className={({ isActive }) =>
-                                    `transition outline-0 ${isActive ? "text-[#22D3EE]" : "hover:text-blue-300"}`
-                                }
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.1 + 0.3 }} // Staggered start
                             >
-                                {btn.name}
-                            </NavLink>
+                                <NavLink
+                                    to={btn.path}
+                                    className={({ isActive }) =>
+                                        `transition outline-0 ${isActive ? "text-[#22D3EE]" : "hover:text-blue-300"}`
+                                    }
+                                >
+                                    {btn.name}
+                                </NavLink>
+                            </motion.div>
                         ))}
                     </nav>
-                    <div ref={dropdownRef} className="flex flex-col">
-                        <ProfileIcon onClick={() => setProfileOpen((prev) => !prev)} className="text-white w-8 h-8 cursor-pointer" />
-                        <div 
-                            className={`
-                                ${isProfileOpen ? "absolute" : "hidden"} 
-                                p-3 w-40 h-fit bg-white mt-10 ml-[-160px]`
-                            }
-                        >
-                            <NavLink to="/user-login" className="hover:text-green-400 tracking-wider">Login</NavLink>
-                        </div>
+
+                    {/* dropdown animation */}
+                    <div ref={dropdownRef} className="flex flex-col relative">
+                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                            <ProfileIcon 
+                                onClick={() => setProfileOpen((prev) => !prev)} 
+                                className="text-white w-8 h-8 cursor-pointer" 
+                            />
+                        </motion.div>
+                        
+                        {/* Animate Presence for the dropdown menu */}
+                        <AnimatePresence>
+                            {isProfileOpen && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute right-0 top-full p-3 w-40 h-fit bg-white mt-2 shadow-lg rounded"
+                                >
+                                    <NavLink to="/user-login" className="text-black hover:text-green-500 tracking-wider">
+                                        Login
+                                    </NavLink>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
 
