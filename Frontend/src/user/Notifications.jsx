@@ -22,6 +22,8 @@ function Notifications() {
   const { notifications, isLight } = useOutletContext();
   const [isActive, setActive] = useState("all");
   const [isHover, setHover] = useState("false");
+  // State to track if notifications are temporarily cleared (will reset on refresh)
+  const [isCleared, setIsCleared] = useState(false);
   const buttons = [
     { name: "All", type: "all" },
     { name: "Summary", type: "summary" },
@@ -29,8 +31,9 @@ function Notifications() {
     { name: "Updates", type: "updates" }
   ]
 
-  const handleClearNotification = (index) => {
-    // Add backend for clearing all notification of the target user (using the 'User ID')
+  const handleClearNotification = () => {
+    // Temporarily clear all notifications (will be back on refresh)
+    setIsCleared(true);
   }
 
   return (
@@ -78,10 +81,18 @@ function Notifications() {
 
       {/* Notifications */}
       <div className="grid grid-cols-1 gap-3 mt-9">
-        {[...notifications]
-          .filter(notif => isActive === "all" ? true : notif.type === isActive)
-          .sort((a, b) => a.time - b.time)
-          .map((notif, index) =>
+        {isCleared ? (
+          // Show empty state when cleared
+          <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} px-6 py-8 rounded-2xl text-center`}>
+            <p className={`${isLight ? "text-black/60" : "text-[#9BB3D6]"} text-sm`}>
+              All notifications cleared. Refresh the page to see them again.
+            </p>
+          </div>
+        ) : (
+          [...notifications]
+            .filter(notif => isActive === "all" ? true : notif.type === isActive)
+            .sort((a, b) => a.time - b.time)
+            .map((notif, index) =>
           (
             <div key={index} className={`${isLight ? "bg-white hover:bg-black/10" : "bg-[#0F2A52] hover:bg-gray-900/20" } grid grid-cols-1 gap-5 md:gap-0 md:flex sm:flex-row w-full md:justify-between px-6 py-4 rounded-2xl cursor-pointer`}>
               <div className="flex flex-row gap-5">
@@ -113,7 +124,8 @@ function Notifications() {
               </div>
             </div>
           )
-          )}
+          )
+        )}
       </div>
     </div>
   )

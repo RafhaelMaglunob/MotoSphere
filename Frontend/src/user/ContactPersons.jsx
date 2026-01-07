@@ -20,10 +20,54 @@ function ContactPersons() {
   const [isConfirmOpen, setConfirmOpen] = useState(false)
   const [deleteIndex, setDeleteIndex] = useState(null);
   const [data, setData] = useState();
+  // Temporary contacts stored in component state (will be lost on refresh)
+  const [temporaryContacts, setTemporaryContacts] = useState([]);
+  // Keep track of removed original contacts by their original index
+  const [removedOriginalIndices, setRemovedOriginalIndices] = useState([]);
+  const [editedOriginals, setEditedOriginals] = useState({});
+
+  const [editIndex, setEditIndex] = useState(null);
+  const [isEditingTemporary, setIsEditingTemporary] = useState(false);
+
+  // Build a map of visible original indices (indexes into the `contacts` prop)
+  const originalIndexMap = contacts.reduce((acc, _, i) => {
+    if (!removedOriginalIndices.includes(i)) acc.push(i);
+    return acc;
+  }, []);
+
+  // Visible originals (filtered) and then temporary contacts appended
+  const visibleOriginals = originalIndexMap.map(i => editedOriginals[i] ? editedOriginals[i] : contacts[i]);
+  const allContacts = [...visibleOriginals, ...temporaryContacts];
 
   const handleDelete = (index) => {
-    const updatedContacts = [...contacts];
-    // Backend logic
+    // If the index belongs to a temporary contact (appended after originals)
+    if (index >= visibleOriginals.length) {
+      const tempIndex = index - visibleOriginals.length;
+      setTemporaryContacts(prev => prev.filter((_, i) => i !== tempIndex));
+    } else {
+      // It's an original contact — mark it as removed in component state
+      const originalIndex = originalIndexMap[index];
+      setRemovedOriginalIndices(prev => [...prev, originalIndex]);
+    }
+  };
+
+  const handleSaveEdit = (updatedContact) => {
+    if (isEditingTemporary) {
+      const tempIndex = editIndex - visibleOriginals.length;
+      setTemporaryContacts(prev => prev.map((c, i) => (i === tempIndex ? updatedContact : c)));
+    } else {
+      const originalIndex = originalIndexMap[editIndex];
+      setEditedOriginals(prev => ({ ...prev, [originalIndex]: updatedContact }));
+    }
+    setEditModalOpen(false);
+    setEditIndex(null);
+    setIsEditingTemporary(false);
+  }
+
+  const handleAddContact = (newContact) => {
+    // Add to temporary contacts (will be lost on refresh)
+    setTemporaryContacts(prev => [...prev, newContact]);
+    setAddModalOpen(false);
   };
 
 
@@ -35,7 +79,7 @@ function ContactPersons() {
       </div>
       <div className="grid md:grid-cols-2 gap-3 mt-6">
         {/* name, relation, contactNo, email */}
-        {contacts.map((contact, index) => (
+        {allContacts.map((contact, index) => (
           // This automatically create a contact information container
           <div key={index} className={`${isLight ? "bg-white" : "bg-[#0F2A52] to-black"} w-full min-h-[170px] w-100 p-6 rounded-2xl`}>
             <div className="grid grid-cols-4">
@@ -63,8 +107,10 @@ function ContactPersons() {
 
                 <span
                   onClick={() => {
-                    setEditModalOpen((prev) => !prev)
-                    setData(contact)
+                    setEditModalOpen(true);
+                    setData(contact);
+                    setEditIndex(index);
+                    setIsEditingTemporary(index >= visibleOriginals.length);
                   }
                   }
                   className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg`}
@@ -111,7 +157,7 @@ function ContactPersons() {
             </button>
 
             {/* Modal content */}
-            <AddContactModal />
+            <AddContactModal onAdd={handleAddContact} onClose={() => setAddModalOpen(false)} />
           </div>
         </div>
       )}
@@ -130,7 +176,7 @@ function ContactPersons() {
             </button>
 
             {/* Modal content */}
-            <EditContactModal data={data} />
+            <EditContactModal data={data} onSave={handleSaveEdit} onClose={() => setEditModalOpen(false)} />
           </div>
         </div>
       )}
