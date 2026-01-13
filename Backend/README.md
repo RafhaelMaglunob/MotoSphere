@@ -1,16 +1,91 @@
-# React + Vite
+# MotoSphere Backend API
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Backend API for MotoSphere - Smart Helmet System
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Install dependencies:
+```bash
+npm install
+```
 
-## React Compiler
+2. Create a `.env` file in the Backend directory (copy from `.env.example`):
+```bash
+cp .env.example .env
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. Update the `.env` file with your configuration:
+   - Set `MONGODB_URI` to your MongoDB connection string
+   - Set `JWT_SECRET` to a secure random string
+   - Set `FRONTEND_URL` to your frontend URL
 
-## Expanding the ESLint configuration
+4. Make sure MongoDB is running on your system or use MongoDB Atlas
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+5. Start the server:
+```bash
+npm start
+```
+
+For development with auto-reload:
+```bash
+npm run dev
+```
+
+## API Endpoints
+
+### Authentication
+
+#### User Registration
+- **POST** `/api/auth/register`
+- Body: `{ username, email, contactNo, password, confirmPassword }`
+- Returns: `{ success, message, token, user }`
+
+#### User Login
+- **POST** `/api/auth/login`
+- Body: `{ email, password }` (email can be email or username)
+- Returns: `{ success, message, token, user }`
+
+#### Admin Login
+- **POST** `/api/auth/admin/login`
+- Body: `{ email, password }` (email can be email or username)
+- Returns: `{ success, message, token, user }`
+
+#### Verify Token
+- **GET** `/api/auth/verify`
+- Headers: `Authorization: Bearer <token>`
+- Returns: `{ success, user }`
+
+### Protected Routes
+
+#### Protected Example
+- **GET** `/api/protected`
+- Headers: `Authorization: Bearer <token>`
+- Returns: `{ message, user }`
+
+## Environment Variables
+
+- `PORT`: Server port (default: 5000)
+- `NODE_ENV`: Environment (development/production)
+- `MONGODB_URI`: MongoDB connection string
+- `JWT_SECRET`: Secret key for JWT tokens
+- `JWT_EXPIRES_IN`: Token expiration time (default: 7d)
+- `FRONTEND_URL`: Frontend URL for CORS
+
+## Database Models
+
+### User
+- `username`: String (unique, required)
+- `email`: String (unique, required)
+- `contactNo`: String (required, format: 09XXXXXXXXX)
+- `password`: String (hashed, required)
+- `role`: String (enum: 'user', 'admin', default: 'user')
+- `createdAt`: Date
+- `updatedAt`: Date
+
+## Security Features
+
+- Password hashing with bcrypt
+- JWT token-based authentication
+- CORS configuration
+- Input validation
+- Error handling middleware
