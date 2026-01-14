@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { authAPI } from '../services/api'
 
 function Settings() {
   const { email, username, setUsername, setEmail, isLight, setIsLight } = useOutletContext();
   const [name, setName] = useState(username || "")
   const [ userEmail, setUserEmail ] = useState(email || "")
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   
   const [ notificationEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem("notificationEnabled")
@@ -16,15 +20,69 @@ function Settings() {
     return saved ? JSON.parse(saved) : false;
   })
 
+  // Update local state when username/email changes from parent
+  useEffect(() => {
+    setName(username || "");
+    setUserEmail(email || "");
+  }, [username, email]);
+
   useEffect(() => {
     localStorage.setItem("emailNotificationEnabled", JSON.stringify(emailNotificationEnabled))
     localStorage.setItem("notificationEnabled", JSON.stringify(notificationEnabled))
   }, [emailNotificationEnabled, notificationEnabled]);
 
-  const handleAccountSave = () => {
-    // Temporarily update parent state (UI-only, lost on refresh)
-    if (setUsername) setUsername(name);
-    if (setEmail) setEmail(userEmail);
+  const handleAccountSave = async () => {
+    setError("");
+    setSuccess("");
+
+    // Validation
+    if (!name || name.trim().length === 0) {
+      setError("Username is required");
+      return;
+    }
+
+    if (!userEmail || userEmail.trim().length === 0) {
+      setError("Email is required");
+      return;
+    }
+
+    // Check if anything changed
+    if (name === username && userEmail === email) {
+      setSuccess("No changes to save");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await authAPI.updateProfile({
+        username: name.trim(),
+        email: userEmail.trim()
+      });
+
+      if (response.success) {
+        // Update parent state
+        if (setUsername) setUsername(response.user.username);
+        if (setEmail) setEmail(response.user.email);
+
+        // Update localStorage with new user data
+        const userData = JSON.parse(localStorage.getItem("user") || "{}");
+        userData.username = response.user.username;
+        userData.email = response.user.email;
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        setSuccess("Profile updated successfully!");
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError(response.message || "Failed to update profile");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to update profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -33,6 +91,18 @@ function Settings() {
       {/* Account and App Configuration */}
       <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} p-7 rounded-xl md:w-[70%]`}>
         <h1 className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-lg font-semibold mb-4`}>Account and App Configuration</h1>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+            <p className="text-green-400 text-sm">{success}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
@@ -79,11 +149,14 @@ function Settings() {
         
         <div 
           className="flex justify-end mt-4"
-          onClick={() => handleAccountSave()}
         >
-          <div className="px-8 py-2 bg-[#2EA8FF] text-white font-semibold rounded-lg cursor-pointer">
-            Save all changes
-          </div>
+          <button
+            onClick={handleAccountSave}
+            disabled={loading}
+            className="px-8 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg cursor-pointer transition-colors"
+          >
+            {loading ? "Saving..." : "Save all changes"}
+          </button>
         </div>
       </div>
                 

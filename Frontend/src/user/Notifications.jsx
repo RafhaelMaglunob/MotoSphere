@@ -88,6 +88,13 @@ function Notifications() {
               All notifications cleared. Refresh the page to see them again.
             </p>
           </div>
+        ) : notifications.length === 0 ? (
+          // Show empty state when no notifications
+          <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} px-6 py-8 rounded-2xl text-center`}>
+            <p className={`${isLight ? "text-black/60" : "text-[#9BB3D6]"} text-sm`}>
+              No notifications yet. Notifications will appear here when available.
+            </p>
+          </div>
         ) : (
           [...notifications]
             .filter(notif => isActive === "all" ? true : notif.type === isActive)

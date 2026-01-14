@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { authAPI } from "../services/api";
 import MotoSphere_logo from "../component/img/MotoSphere Logo.png";
 
 export default function Register() {
@@ -17,6 +18,8 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setChecked] = useState(false); // checkbox state
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // ================= LIVE VALIDATION =================
   const validateField = (name, value) => {
@@ -75,17 +78,45 @@ export default function Register() {
     validateField(name, value);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setSubmitError("");
+
     // Final check before register
     ["username", "email", "contactNo", "password", "confirmPassword"].forEach(
       (field) => validateField(field, form[field])
     );
 
     const hasError = Object.values(errors).some((e) => e);
-    if (hasError) return;
+    if (hasError) {
+      setSubmitError("Please fix the errors above");
+      return;
+    }
 
-    alert("Registered successfully");
-    navigate("/user/home");
+    setLoading(true);
+
+    try {
+      const response = await authAPI.register({
+        username: form.username,
+        email: form.email,
+        contactNo: form.contactNo,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+      });
+
+      if (response.success) {
+        // Store token in localStorage
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("user", JSON.stringify(response.user));
+        navigate("/user/home");
+      } else {
+        setSubmitError(response.message || "Registration failed");
+      }
+    } catch (err) {
+      setSubmitError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -127,7 +158,13 @@ export default function Register() {
         <span className="text-2xl font-bold text-white">Register</span>
         <span className="text-[#94A3B8]">Create your MotoSphere account</span>
 
-        <div className="flex flex-col gap-4 mt-8 w-full">
+        {submitError && (
+          <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <p className="text-red-400 text-sm text-center">{submitError}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleRegister} className="flex flex-col gap-4 mt-8 w-full">
           {/* Username */}
           <Input
             label="Username"
@@ -192,10 +229,11 @@ export default function Register() {
           </div>
 
           <button
-            onClick={handleRegister}
-            className="bg-[#06B6D4] hover:bg-[#06B6D4]/80 text-white font-bold py-3 rounded-lg w-full"
+            type="submit"
+            disabled={loading}
+            className="bg-[#06B6D4] hover:bg-[#06B6D4]/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg w-full transition-colors"
           >
-            Register
+            {loading ? "Registering..." : "Register"}
           </button>
 
           <div className="flex w-full justify-between text-sm text-[#94A3B8]">
@@ -207,7 +245,7 @@ export default function Register() {
               Login
             </span>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+import './config/firebase.js'; // Initialize Firebase
 import authRoutes from './routes/auth.js';
 import { verifyToken } from './middleware/auth.js';
 
@@ -18,14 +18,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/motosphere', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ Connected to MongoDB'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
-
 // Routes
 app.use('/api/auth', authRoutes);
 
@@ -39,13 +31,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'MotoSphere API is running' });
 });
 
+// Catch-all route for undefined API endpoints
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API endpoint not found: ${req.method} ${req.originalUrl}`
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(err.status || 500).json({ 
     success: false, 
-    message: 'Something went wrong!', 
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    message: err.message || 'Something went wrong!', 
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined 
   });
 });
 

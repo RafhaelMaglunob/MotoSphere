@@ -17,7 +17,7 @@ export const verifyToken = async (req, res, next) => {
       process.env.JWT_SECRET || 'your-secret-key-change-in-production'
     );
 
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId);
 
     if (!user) {
       return res.status(401).json({

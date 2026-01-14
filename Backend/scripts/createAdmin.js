@@ -1,24 +1,23 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import '../config/firebase.js'; // Initialize Firebase
 import User from '../models/User.js';
 
 dotenv.config();
 
 const createAdmin = async () => {
   try {
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/motosphere');
-    console.log('✅ Connected to MongoDB');
+    console.log('🔍 Checking for existing admin user...');
 
     // Check if admin already exists
-    const existingAdmin = await User.findOne({ role: 'admin' });
+    const existingAdmin = await User.findAdminForLogin('admin@motosphere.com');
     if (existingAdmin) {
       console.log('⚠️  Admin user already exists');
+      console.log(`📧 Email: ${existingAdmin.email}`);
       process.exit(0);
     }
 
     // Create admin user
-    const admin = new User({
+    const admin = await User.create({
       username: 'admin',
       email: 'admin@motosphere.com',
       contactNo: '09123456789',
@@ -26,7 +25,6 @@ const createAdmin = async () => {
       role: 'admin'
     });
 
-    await admin.save();
     console.log('✅ Admin user created successfully!');
     console.log('📧 Email: admin@motosphere.com');
     console.log('🔑 Password: Admin@123');
@@ -34,7 +32,7 @@ const createAdmin = async () => {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error creating admin:', error);
+    console.error('❌ Error creating admin:', error.message);
     process.exit(1);
   }
 };

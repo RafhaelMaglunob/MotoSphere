@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Outlet } from "react-router-dom";
+import React, { useState, useEffect } from 'react'
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
 import { useNavigate } from 'react-router-dom';
@@ -11,17 +11,40 @@ import { DevicesIcon } from '../component/svg/DevicesIcon.jsx';
 import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
 
 import { Shield } from "../component/svg/Shield.jsx";
+import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
 
 function MainLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [showSidebar, setShowSidebar] = useState(false);
+    const [adminName, setAdminName] = useState("Admin User");
+    const [adminEmail, setAdminEmail] = useState("");
+    
+    // Load admin data from localStorage on mount
+    useEffect(() => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                setAdminName(user.username || "Admin User");
+                setAdminEmail(user.email || "");
+            } catch (error) {
+                console.error("Error parsing admin data:", error);
+            }
+        }
+    }, []);
+
     const buttons = [
         {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 
         {icon: UsersIcon, name: "Users", path: "/admin/users"},
         {icon: DevicesIcon, name: "Devices", path: "/admin/devices"},
         {icon: SettingsIcon, name: "Settings", path: "/admin/settings"}
     ]
+
+    const activeButton = buttons.find(
+        btn => location.pathname.startsWith(btn.path)
+    )?.name;
 
     const footer = (
         <div className="flex flex-col px-5 mt-auto">
@@ -30,14 +53,19 @@ function MainLayout() {
                 <Shield className="w-5 h-5 text-[#22D3EE]" />
                 </span>
                 <div className="flex flex-col justify-center">
-                <h1 className="text-white text-sm font-bold">Admin User</h1>
+                <h1 className="text-white text-sm font-bold">{adminName}</h1>
                 <h4 className="text-[#9BB3D6] text-xs">Super Admin</h4>
                 </div>
             </div>
 
             <div className="text-[#F87171] text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
                 <img src={Logout} alt="Logout" />
-                <h1 onClick={() => navigate('/admin-login')}>Log Out</h1>
+                <h1 onClick={() => {
+                    // Clear admin data from localStorage
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user");
+                    navigate('/admin-login');
+                }}>Log Out</h1>
             </div>
         </div>
     )
@@ -63,8 +91,24 @@ function MainLayout() {
                 {/* Topbar */}
                 <Topbar
                     onBurgerClick={() => setShowSidebar(true)}
-                    isMdHidden={true}
-                />
+                    bgColor="#050816"
+                    height={60}
+                >
+                    <div className="flex flex-row justify-between w-full place-items-center">
+                        <span className="text-white font-semibold text-sm">
+                            {activeButton || "Dashboard"}
+                        </span>
+                        <div className="flex flex-row items-center gap-3">
+                            <div className="flex flex-col">
+                                <span className="text-white text-[12px] font-semibold">{adminName}</span>
+                                <span className="text-[#9BB3D6] text-[11px] font-light">Admin</span>
+                            </div>
+                            <div className="bg-[#0F2A52] p-2 rounded-3xl"> 
+                                <ProfileIconOutline className="text-[#39A9FF]" />
+                            </div>
+                        </div>
+                    </div>
+                </Topbar>
 
                 {/* Content */}
                 <main className="flex-1 p-6 overflow-x-hidden">
