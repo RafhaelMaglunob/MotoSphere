@@ -1,0 +1,10 @@
+﻿node_modules/
+.env
+*.log
+.DS_Store
+dist/
+
+# Firebase service account keys (contains sensitive credentials)
+*-firebase-adminsdk-*.json
+firebase-adminsdk-*.json
+serviceAccountKey.json
