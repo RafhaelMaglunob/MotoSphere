@@ -1,7 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User, { comparePassword } from '../models/User.js';
-import { verifyToken } from '../middleware/auth.js';
+import { verifyToken, verifyAdmin } from '../middleware/auth.js';
+import admin from 'firebase-admin';
+import { OAuth2Client } from 'google-auth-library';
 
 const router = express.Router();
 
@@ -359,6 +361,73 @@ router.get('/verify', async (req, res) => {
   }
 });
 
+// Get All Users (Admin only)
+router.get('/users', verifyAdmin, async (req, res) => {
+  try {
+    const users = await User.findAll(false); // Get all users except admins
+    
+    // Format users for the frontend table
+    const formattedUsers = users.map(user => {
+      // Calculate lastActive from updatedAt or createdAt
+      let lastActive = 'Never';
+      if (user.updatedAt) {
+        const updatedTime = user.updatedAt.toDate ? user.updatedAt.toDate() : new Date(user.updatedAt);
+        const now = new Date();
+        const secondsAgo = Math.floor((now - updatedTime) / 1000);
+        
+        if (secondsAgo < 60) {
+          lastActive = `${secondsAgo} sec${secondsAgo !== 1 ? "s" : ""} ago`;
+        } else if (secondsAgo < 3600) {
+          const mins = Math.floor(secondsAgo / 60);
+          lastActive = `${mins} min${mins !== 1 ? "s" : ""} ago`;
+        } else if (secondsAgo < 86400) {
+          const hours = Math.floor(secondsAgo / 3600);
+          lastActive = `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+        } else {
+          const days = Math.floor(secondsAgo / 86400);
+          lastActive = `${days} day${days !== 1 ? "s" : ""} ago`;
+        }
+      } else if (user.createdAt) {
+        const createdTime = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+        const now = new Date();
+        const secondsAgo = Math.floor((now - createdTime) / 1000);
+        
+        if (secondsAgo < 60) {
+          lastActive = `${secondsAgo} sec${secondsAgo !== 1 ? "s" : ""} ago`;
+        } else if (secondsAgo < 3600) {
+          const mins = Math.floor(secondsAgo / 60);
+          lastActive = `${mins} min${mins !== 1 ? "s" : ""} ago`;
+        } else if (secondsAgo < 86400) {
+          const hours = Math.floor(secondsAgo / 3600);
+          lastActive = `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+        } else {
+          const days = Math.floor(secondsAgo / 86400);
+          lastActive = `${days} day${days !== 1 ? "s" : ""} ago`;
+        }
+      }
+      
+      return {
+        id: user.id,
+        name: user.username || 'Unknown',
+        email: user.email || '',
+        status: 'Active', // Default status, can be enhanced later
+        lastActive: lastActive
+      };
+    });
+    
+    res.json({
+      success: true,
+      users: formattedUsers
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch users'
+    });
+  }
+});
+
 // Update User Profile
 router.put('/profile', verifyToken, async (req, res) => {
   try {
@@ -429,6 +498,511 @@ router.put('/profile', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update profile'
+    });
+  }
+});
+
+// Delete User (Admin only)
+router.delete('/users/:userId', verifyAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete admin users'
+      });
+    }
+
+    // Delete user
+    await User.delete(userId);
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete user'
+    });
+  }
+});
+
+// Update User (Admin only)
+router.put('/users/:userId', verifyAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, status } = req.body;
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prepare update data
+    const updateData = {};
+    if (name !== undefined) {
+      const usernameValidation = validateUsername(name);
+      if (!usernameValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: usernameValidation.message
+        });
+      }
+      updateData.username = usernameValidation.username;
+    }
+
+    if (email !== undefined) {
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: emailValidation.message
+        });
+      }
+      updateData.email = emailValidation.email;
+    }
+
+    // Check if username or email is already taken by another user
+    if (updateData.username || updateData.email) {
+      const existingUser = await User.findByEmailOrUsername(
+        updateData.email || user.email,
+        updateData.username || user.username
+      );
+
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username or email already taken by another user'
+        });
+      }
+    }
+
+    // Update user
+    const updatedUser = await User.update(userId, updateData);
+
+    // Format response similar to getAllUsers
+    let lastActive = 'Never';
+    if (updatedUser.updatedAt) {
+      const updatedTime = updatedUser.updatedAt.toDate ? updatedUser.updatedAt.toDate() : new Date(updatedUser.updatedAt);
+      const now = new Date();
+      const secondsAgo = Math.floor((now - updatedTime) / 1000);
+      
+      if (secondsAgo < 60) {
+        lastActive = `${secondsAgo} sec${secondsAgo !== 1 ? "s" : ""} ago`;
+      } else if (secondsAgo < 3600) {
+        const mins = Math.floor(secondsAgo / 60);
+        lastActive = `${mins} min${mins !== 1 ? "s" : ""} ago`;
+      } else if (secondsAgo < 86400) {
+        const hours = Math.floor(secondsAgo / 3600);
+        lastActive = `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+      } else {
+        const days = Math.floor(secondsAgo / 86400);
+        lastActive = `${days} day${days !== 1 ? "s" : ""} ago`;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.username || 'Unknown',
+        email: updatedUser.email || '',
+        status: status || 'Active',
+        lastActive: lastActive
+      }
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update user'
+    });
+  }
+});
+
+// Get User Contacts
+router.get('/contacts', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const contacts = user.contacts || [];
+    
+    res.json({
+      success: true,
+      contacts: contacts
+    });
+  } catch (error) {
+    console.error('Get contacts error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch contacts'
+    });
+  }
+});
+
+// Add Contact
+router.post('/contacts', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, relation, contactNo, email } = req.body;
+
+    // Validation
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact name is required'
+      });
+    }
+
+    if (!relation || !relation.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact relation is required'
+      });
+    }
+
+    if (!contactNo || !contactNo.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact number is required'
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact email is required'
+      });
+    }
+
+    // Get current user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check contact limit (max 5)
+    const currentContacts = user.contacts || [];
+    if (currentContacts.length >= 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum of 5 contacts allowed. Please delete a contact before adding a new one.'
+      });
+    }
+
+    // Create new contact
+    const newContact = {
+      id: `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: name.trim(),
+      relation: relation.trim(),
+      contactNo: contactNo.trim(),
+      email: email.trim().toLowerCase(),
+      createdAt: admin.firestore.Timestamp.now()
+    };
+
+    // Add contact to user's contacts array
+    const updatedContacts = [...currentContacts, newContact];
+    await User.update(userId, { contacts: updatedContacts });
+
+    res.json({
+      success: true,
+      message: 'Contact added successfully',
+      contact: newContact
+    });
+  } catch (error) {
+    console.error('Add contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to add contact'
+    });
+  }
+});
+
+// Update Contact
+router.put('/contacts/:contactId', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { contactId } = req.params;
+    const { name, relation, contactNo, email } = req.body;
+
+    // Validation
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact name is required'
+      });
+    }
+
+    if (!relation || !relation.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact relation is required'
+      });
+    }
+
+    if (!contactNo || !contactNo.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact number is required'
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contact email is required'
+      });
+    }
+
+    // Get current user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const contacts = user.contacts || [];
+    const contactIndex = contacts.findIndex(c => c.id === contactId);
+
+    if (contactIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Update contact
+    const updatedContacts = [...contacts];
+    updatedContacts[contactIndex] = {
+      ...updatedContacts[contactIndex],
+      name: name.trim(),
+      relation: relation.trim(),
+      contactNo: contactNo.trim(),
+      email: email.trim().toLowerCase(),
+      updatedAt: admin.firestore.Timestamp.now()
+    };
+
+    await User.update(userId, { contacts: updatedContacts });
+
+    res.json({
+      success: true,
+      message: 'Contact updated successfully',
+      contact: updatedContacts[contactIndex]
+    });
+  } catch (error) {
+    console.error('Update contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update contact'
+    });
+  }
+});
+
+// Delete Contact
+router.delete('/contacts/:contactId', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { contactId } = req.params;
+
+    // Get current user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const contacts = user.contacts || [];
+    const contactIndex = contacts.findIndex(c => c.id === contactId);
+
+    if (contactIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Remove contact
+    const updatedContacts = contacts.filter(c => c.id !== contactId);
+    await User.update(userId, { contacts: updatedContacts });
+
+    res.json({
+      success: true,
+      message: 'Contact deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete contact'
+    });
+  }
+});
+
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validation
+    if (!email || typeof email !== 'string' || email.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: emailValidation.message
+      });
+    }
+
+    // Find user by email
+    const user = await User.findByEmailOrUsername(emailValidation.email, null);
+
+    // For security, always return success message even if user doesn't exist
+    // This prevents email enumeration attacks
+    if (!user) {
+      return res.json({
+        success: true,
+        message: 'If an account with that email exists, password reset instructions have been sent.'
+      });
+    }
+
+    // In a production environment, you would:
+    // 1. Generate a secure reset token
+    // 2. Store it in the database with an expiration time
+    // 3. Send an email with a reset link containing the token
+    // 4. Create a reset password endpoint that validates the token
+
+    // For now, we'll just return a success message
+    // TODO: Implement email sending and token generation
+    console.log(`Password reset requested for email: ${emailValidation.email}`);
+
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, password reset instructions have been sent.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to process password reset request'
+    });
+  }
+});
+
+// Google OAuth Login
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken || typeof idToken !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Google ID token is required'
+      });
+    }
+
+    // Verify Google ID token
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+    } catch (error) {
+      console.error('Google token verification error:', error);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid Google token'
+      });
+    }
+
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email not provided by Google'
+      });
+    }
+
+    // Validate email format (must match your email validation rules)
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email from Google does not meet requirements. Must be gmail.com, yahoo.com, or hotmail.com'
+      });
+    }
+
+    // Create or find user
+    const user = await User.createOrFindOAuthUser({
+      email: emailValidation.email,
+      name: name || email.split('@')[0],
+      googleId,
+      picture
+    });
+
+    // Generate JWT token
+    const token = generateToken(user.id, user.role);
+
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        picture: user.picture || null
+      }
+    });
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Google authentication failed'
     });
   }
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
 import { useNavigate } from 'react-router-dom';
@@ -21,19 +21,35 @@ function MainLayout() {
     const [adminName, setAdminName] = useState("Admin User");
     const [adminEmail, setAdminEmail] = useState("");
     
+    // Check if user is authenticated and is admin
+    const userData = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    
+    if (!token || !userData) {
+        return <Navigate to="/admin-login" replace />;
+    }
+
+    let user;
+    try {
+        user = JSON.parse(userData);
+        if (user.role !== 'admin') {
+            // Not an admin, clear data and redirect
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            return <Navigate to="/admin-login" replace />;
+        }
+    } catch (error) {
+        console.error("Error parsing admin data:", error);
+        return <Navigate to="/admin-login" replace />;
+    }
+
     // Load admin data from localStorage on mount
     useEffect(() => {
-        const userData = localStorage.getItem("user");
-        if (userData) {
-            try {
-                const user = JSON.parse(userData);
-                setAdminName(user.username || "Admin User");
-                setAdminEmail(user.email || "");
-            } catch (error) {
-                console.error("Error parsing admin data:", error);
-            }
+        if (user) {
+            setAdminName(user.username || "Admin User");
+            setAdminEmail(user.email || "");
         }
-    }, []);
+    }, [user]);
 
     const buttons = [
         {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 

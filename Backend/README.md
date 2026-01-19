@@ -28,6 +28,7 @@ cp .env.example .env
    - Configure Firebase credentials (see step 3)
    - Set `JWT_SECRET` to a secure random string
    - Set `FRONTEND_URL` to your frontend URL
+   - Set `GOOGLE_CLIENT_ID` for Google OAuth SSO (optional, see Google OAuth setup below)
 
 5. Create an admin user:
 ```bash
@@ -68,6 +69,11 @@ npm run dev
 - Headers: `Authorization: Bearer <token>`
 - Returns: `{ success, user }`
 
+#### Google OAuth Login (SSO)
+- **POST** `/api/auth/google`
+- Body: `{ idToken }` (Google ID token from Google Identity Services)
+- Returns: `{ success, message, token, user }`
+
 ### Protected Routes
 
 #### Protected Example
@@ -88,6 +94,7 @@ npm run dev
 - `JWT_SECRET`: Secret key for JWT tokens
 - `JWT_EXPIRES_IN`: Token expiration time (default: 7d)
 - `FRONTEND_URL`: Frontend URL for CORS
+- `GOOGLE_CLIENT_ID`: Google OAuth 2.0 Client ID (required for Google SSO)
 
 ## Database Models
 
@@ -117,10 +124,38 @@ npm run dev
 - **Password**: Required, cannot be empty
 - Returns generic error message for security: "Invalid email/username or password"
 
+## Google OAuth Setup (Single Sign-On)
+
+To enable Google Sign-In:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google+ API:
+   - Navigate to "APIs & Services" > "Library"
+   - Search for "Google+ API" and enable it
+4. Create OAuth 2.0 credentials:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "Web application"
+   - Add authorized JavaScript origins:
+     - `http://localhost:5173` (for development)
+     - Your production frontend URL
+   - Add authorized redirect URIs:
+     - `http://localhost:5173` (for development)
+     - Your production frontend URL
+   - Copy the Client ID
+5. Set environment variables:
+   - Backend `.env`: Add `GOOGLE_CLIENT_ID=your-client-id-here`
+   - Frontend `.env` (or `.env.local`): Add `VITE_GOOGLE_CLIENT_ID=your-client-id-here`
+6. Restart both frontend and backend servers
+
+**Note**: Users signing in with Google must have an email ending with `gmail.com`, `yahoo.com`, or `hotmail.com` to match your email validation rules.
+
 ## Security Features
 
 - Password hashing with bcrypt
 - JWT token-based authentication
 - CORS configuration
 - Input validation
+- Google OAuth 2.0 integration for SSO
 - Error handling middleware

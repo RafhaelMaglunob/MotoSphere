@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "../services/api";
 import MotoSphere_logo from "../component/img/MotoSphere Logo.png";
@@ -20,6 +20,8 @@ export default function Register() {
   const [isChecked, setChecked] = useState(false); // checkbox state
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleButtonRef = useRef(null);
 
   // ================= LIVE VALIDATION =================
   const validateField = (name, value) => {
@@ -68,6 +70,95 @@ export default function Register() {
     }
 
     setErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
+  // Load Google Identity Services script
+  useEffect(() => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    
+    if (!googleClientId) {
+      console.warn('Google Client ID not configured. Google Sign-In will not work.');
+      return;
+    }
+
+    // Check if script already exists
+    if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+      // Script already loaded, just initialize
+      if (window.google && window.google.accounts) {
+        initializeGoogleSignIn(googleClientId);
+      }
+      return;
+    }
+
+    // Load Google Identity Services script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google && window.google.accounts) {
+        initializeGoogleSignIn(googleClientId);
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup: remove script if component unmounts
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript && !document.querySelector('body[data-google-script-loaded]')) {
+        existingScript.remove();
+      }
+    };
+  }, []);
+
+  const initializeGoogleSignIn = (clientId) => {
+    if (!window.google || !window.google.accounts) return;
+
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleSignIn,
+    });
+
+    // Render the button with a small delay to ensure DOM is ready
+    setTimeout(() => {
+      if (googleButtonRef.current && window.google.accounts.id.renderButton) {
+        try {
+          window.google.accounts.id.renderButton(googleButtonRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'signup_with',
+            width: '100%',
+          });
+        } catch (error) {
+          console.error('Error rendering Google button:', error);
+        }
+      }
+    }, 100);
+  };
+
+  const handleGoogleSignIn = async (response) => {
+    setSubmitError("");
+    setGoogleLoading(true);
+
+    try {
+      const authResponse = await authAPI.googleLogin(response.credential);
+
+      if (authResponse.success) {
+        // Store token in localStorage
+        localStorage.setItem("token", authResponse.token);
+        localStorage.setItem("user", JSON.stringify(authResponse.user));
+
+        // Redirect to user home
+        navigate("/user/home", { replace: true });
+      } else {
+        setSubmitError(authResponse.message || 'Google registration failed');
+      }
+    } catch (err) {
+      setSubmitError(err.message || 'Google authentication failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   // ================= HANDLER =================
@@ -230,22 +321,48 @@ export default function Register() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || googleLoading}
             className="bg-[#06B6D4] hover:bg-[#06B6D4]/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg w-full transition-colors"
           >
             {loading ? "Registering..." : "Register"}
           </button>
-
-          <div className="flex w-full justify-between text-sm text-[#94A3B8]">
-            <span>Already have an account?</span>
-            <span
-              onClick={() => navigate("/user-login")}
-              className="text-[#22D3EE] cursor-pointer"
-            >
-              Login
-            </span>
-          </div>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center w-full my-4">
+          <div className="flex-1 border-t border-[#334155]"></div>
+          <span className="px-4 text-[#94A3B8] text-xs">OR</span>
+          <div className="flex-1 border-t border-[#334155]"></div>
+        </div>
+
+        {/* Google Sign-In Button */}
+        <div className="w-full flex flex-col items-center">
+          <div 
+            ref={googleButtonRef}
+            className={`w-full ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
+            style={{ minHeight: '40px' }}
+          ></div>
+          {googleLoading && (
+            <div className="mt-2">
+              <span className="text-[#22D3EE] text-sm">Signing up with Google...</span>
+            </div>
+          )}
+          {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <p className="text-xs text-[#94A3B8] mt-2 text-center">
+              Google Sign-In not configured
+            </p>
+          )}
+        </div>
+
+        <div className="flex w-full justify-between text-sm text-[#94A3B8] mt-4">
+          <span>Already have an account?</span>
+          <span
+            onClick={() => navigate("/user-login")}
+            className="text-[#22D3EE] cursor-pointer"
+          >
+            Login
+          </span>
+        </div>
       </div>
     </div>
   );

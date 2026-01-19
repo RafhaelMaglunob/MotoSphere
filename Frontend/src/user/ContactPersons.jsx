@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline';
@@ -12,62 +12,102 @@ import PlusIcon from '../component/svg/PlusIcon';
 import AddContactModal from '../component/modal/AddContactModal';
 import EditContactModal from '../component/modal/EditContactModal';
 import ConfirmModal from '../component/modal/ConfirmModal';
+import { authAPI } from '../services/api';
 
 function ContactPersons() {
-  const { contacts, isLight } = useOutletContext();
+  const { contacts, setContacts, isLight } = useOutletContext();
   const [isAddModalOpen, setAddModalOpen] = useState(false)
   const [isEditModalOpen, setEditModalOpen] = useState(false)
   const [isConfirmOpen, setConfirmOpen] = useState(false)
-  const [deleteIndex, setDeleteIndex] = useState(null);
-  const [data, setData] = useState();
-  // Temporary contacts stored in component state (will be lost on refresh)
-  const [temporaryContacts, setTemporaryContacts] = useState([]);
-  // Keep track of removed original contacts by their original index
-  const [removedOriginalIndices, setRemovedOriginalIndices] = useState([]);
-  const [editedOriginals, setEditedOriginals] = useState({});
+  const [deleteContactId, setDeleteContactId] = useState(null);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [editIndex, setEditIndex] = useState(null);
-  const [isEditingTemporary, setIsEditingTemporary] = useState(false);
+  const allContacts = contacts || [];
 
-  // Build a map of visible original indices (indexes into the `contacts` prop)
-  const originalIndexMap = contacts.reduce((acc, _, i) => {
-    if (!removedOriginalIndices.includes(i)) acc.push(i);
-    return acc;
-  }, []);
+  const handleDelete = async () => {
+    if (!deleteContactId) return;
 
-  // Visible originals (filtered) and then temporary contacts appended
-  const visibleOriginals = originalIndexMap.map(i => editedOriginals[i] ? editedOriginals[i] : contacts[i]);
-  const allContacts = [...visibleOriginals, ...temporaryContacts];
+    try {
+      setLoading(true);
+      setError("");
+      const response = await authAPI.deleteContact(deleteContactId);
 
-  const handleDelete = (index) => {
-    // If the index belongs to a temporary contact (appended after originals)
-    if (index >= visibleOriginals.length) {
-      const tempIndex = index - visibleOriginals.length;
-      setTemporaryContacts(prev => prev.filter((_, i) => i !== tempIndex));
-    } else {
-      // It's an original contact — mark it as removed in component state
-      const originalIndex = originalIndexMap[index];
-      setRemovedOriginalIndices(prev => [...prev, originalIndex]);
+      if (response.success) {
+        // Remove from local state
+        setContacts(prev => prev.filter(c => c.id !== deleteContactId));
+        setConfirmOpen(false);
+        setDeleteContactId(null);
+      } else {
+        setError(response.message || "Failed to delete contact");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to delete contact. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSaveEdit = (updatedContact) => {
-    if (isEditingTemporary) {
-      const tempIndex = editIndex - visibleOriginals.length;
-      setTemporaryContacts(prev => prev.map((c, i) => (i === tempIndex ? updatedContact : c)));
-    } else {
-      const originalIndex = originalIndexMap[editIndex];
-      setEditedOriginals(prev => ({ ...prev, [originalIndex]: updatedContact }));
+  const handleSaveEdit = async (updatedContact) => {
+    if (!data || !data.id) return;
+
+    try {
+      setLoading(true);
+      setError("");
+      const response = await authAPI.updateContact(data.id, {
+        name: updatedContact.name,
+        relation: updatedContact.relation,
+        contactNo: updatedContact.contactNo,
+        email: updatedContact.email
+      });
+
+      if (response.success) {
+        // Update local state
+        setContacts(prev => prev.map(c => 
+          c.id === data.id ? response.contact : c
+        ));
+        setEditModalOpen(false);
+        setData(null);
+      } else {
+        setError(response.message || "Failed to update contact");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to update contact. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setEditModalOpen(false);
-    setEditIndex(null);
-    setIsEditingTemporary(false);
   }
 
-  const handleAddContact = (newContact) => {
-    // Add to temporary contacts (will be lost on refresh)
-    setTemporaryContacts(prev => [...prev, newContact]);
-    setAddModalOpen(false);
+  const handleAddContact = async (newContact) => {
+    // Check if we've reached the limit of 5 contacts
+    if (allContacts.length >= 5) {
+      setError("Maximum of 5 contacts allowed. Please delete a contact before adding a new one.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      const response = await authAPI.addContact({
+        name: newContact.name,
+        relation: newContact.relation,
+        contactNo: newContact.contactNo,
+        email: newContact.email
+      });
+
+      if (response.success) {
+        // Add to local state
+        setContacts(prev => [...prev, response.contact]);
+        setAddModalOpen(false);
+      } else {
+        setError(response.message || "Failed to add contact");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to add contact. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -77,6 +117,12 @@ function ContactPersons() {
         <h1 className={`${isLight ? "text-black" : "text-white"} text-3xl font-semibold`}>Trusted Contacts</h1>
         <span className={`${isLight ? "text-black/88" : "text-[#9BB3D6]"} text-sm`}>Manage who gets notified in case of an emergency.</span>
       </div>
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 gap-3 mt-6">
         {/* name, relation, contactNo, email */}
         {allContacts.map((contact, index) => (
@@ -97,10 +143,10 @@ function ContactPersons() {
               <div className="flex flex-row h-fit gap-2 w-full justify-end">
                 <span
                   onClick={() => {
-                    setDeleteIndex(index); // store which contact to delete
-                    setConfirmOpen(true); // show modal
+                    setDeleteContactId(contact.id);
+                    setConfirmOpen(true);
                   }}
-                  className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg`}
+                  className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg cursor-pointer`}
                 >
                   <DeleteIcon color={isLight ? "#000" : "#9BB3D6"} />
                 </span>
@@ -109,11 +155,8 @@ function ContactPersons() {
                   onClick={() => {
                     setEditModalOpen(true);
                     setData(contact);
-                    setEditIndex(index);
-                    setIsEditingTemporary(index >= visibleOriginals.length);
-                  }
-                  }
-                  className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg`}
+                  }}
+                  className={`${isLight ? "bg-black/20" : "bg-[#0A1A3A]"} p-2 rounded-lg cursor-pointer`}
                 >
                   <EditIcon color={isLight ? "#000" : "#9BB3D6"} />
                 </span>
@@ -133,14 +176,16 @@ function ContactPersons() {
         ))}
 
         {/* Add Contacts */}
-        <div onClick={() => setAddModalOpen((prev) => !prev)} className={`${isLight ? "bg-white" : "bg-none border border-[#334155]"} cursor-pointer p-6 rounded-2xl w-full min-h-[170px] flex flex-col gap-3 items-center justify-center`}>
-          <span className={`${isLight ? "bg-black/20" : "bg-[#1E293B]"} rounded-4xl p-4 `}>
-            <PlusIcon color="rgba(0,0,0,0.7)"
-            />
-          </span>
-          <h1 className={`${isLight ? "text-black/80" : "text-[#94A3B8]"} font-semibold text-md`}>Add New Contact</h1>
-          <span className={`${isLight ? "text-[#475569]" : "text-gray-500"} text-xs`}>Up to 5 contacts allowed</span>
-        </div>
+        {allContacts.length < 5 && (
+          <div onClick={() => setAddModalOpen((prev) => !prev)} className={`${isLight ? "bg-white" : "bg-none border border-[#334155]"} cursor-pointer p-6 rounded-2xl w-full min-h-[170px] flex flex-col gap-3 items-center justify-center`}>
+            <span className={`${isLight ? "bg-black/20" : "bg-[#1E293B]"} rounded-4xl p-4 `}>
+              <PlusIcon color="rgba(0,0,0,0.7)"
+              />
+            </span>
+            <h1 className={`${isLight ? "text-black/80" : "text-[#94A3B8]"} font-semibold text-md`}>Add New Contact</h1>
+            <span className={`${isLight ? "text-[#475569]" : "text-gray-500"} text-xs`}>Up to 5 contacts allowed</span>
+          </div>
+        )}
       </div>
 
       {isAddModalOpen && (
@@ -184,11 +229,11 @@ function ContactPersons() {
       <ConfirmModal
         isOpen={isConfirmOpen}
         message="Are you sure you want to delete this contact?"
-        onConfirm={() => {
-          handleDelete(deleteIndex);
+        onConfirm={handleDelete}
+        onCancel={() => {
           setConfirmOpen(false);
+          setDeleteContactId(null);
         }}
-        onCancel={() => setConfirmOpen(false)}
       />
 
 

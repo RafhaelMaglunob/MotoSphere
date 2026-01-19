@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { FiFilter } from "react-icons/fi";
 import Table from '../component/table/Table';
+import EditDeviceModal from '../component/modal/EditDeviceModal';
+import ConfirmModal from '../component/modal/ConfirmModal';
 
 import { StatusIcon } from '../component/svg/Status';
 
@@ -13,6 +15,11 @@ function formatTimeAgo(secondsAgo) {
 
 function Devices() {
     const [searchQuery, setSearchQuery] = useState("");
+    const [tableData, setTableData] = useState([]); // Devices data - will be populated from API/database in the future
+    const [isEditModalOpen, setEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [selectedDevice, setSelectedDevice] = useState(null);
+    const [deleteIndex, setDeleteIndex] = useState(null);
 
     const tableColumns = [
         { key: "deviceID", label: "Device ID", minWidth: '180px' },
@@ -22,7 +29,7 @@ function Devices() {
             minWidth: '180px',
             render: (value) => (
                 <div className="flex flex-row items-center gap-3">
-                    <StatusIcon className="w-4 h-4 text-[#4ADE80]" />
+                    <StatusIcon className={`w-4 h-4 ${value === "Online" ? "text-[#4ADE80]" : "text-gray-500"}`} />
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                         value === "Online" 
                             ? "bg-green-500/20 text-green-400" 
@@ -38,22 +45,47 @@ function Devices() {
         { 
             key: "actions", 
             label: "Actions",
-            minWidth: '100px',
-            render: (value) => (
-                <button className="text-[#22D3EE] hover:text-[#1ba8c4] cursor-pointer font-medium">
-                    {value}
-                </button>
+            minWidth: '150px',
+            render: (value, row) => (
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => {
+                            setSelectedDevice(row);
+                            setEditModalOpen(true);
+                        }}
+                        className="text-[#22D3EE] hover:text-[#1ba8c4] cursor-pointer font-medium"
+                    >
+                        Manage
+                    </button>
+                    <button 
+                        onClick={() => {
+                            setDeleteIndex(tableData.findIndex(d => d.deviceID === row.deviceID));
+                            setDeleteModalOpen(true);
+                        }}
+                        className="text-red-400 hover:text-red-500 cursor-pointer font-medium"
+                    >
+                        Delete
+                    </button>
+                </div>
             )
         }
     ];
 
-    const tableData = Array(6).fill(null).map((_, index) => ({
-        deviceID: `DEV-${1000 + index}`,
-        status: index % 2 === 0 ? "Online" : "Offline",
-        assigned_user: `User ${index + 1}`,
-        last_active: formatTimeAgo(12050 + index * 500),
-        actions: "Manage"
-    }));
+    const handleEditDevice = (updatedDevice) => {
+        setTableData(prev => prev.map(device => 
+            device.deviceID === updatedDevice.deviceID ? updatedDevice : device
+        ));
+        setEditModalOpen(false);
+        setSelectedDevice(null);
+    };
+
+    const handleDeleteDevice = () => {
+        if (deleteIndex !== null) {
+            setTableData(prev => prev.filter((_, index) => index !== deleteIndex));
+            setDeleteModalOpen(false);
+            setDeleteIndex(null);
+        }
+    };
 
     // Filter data based on search query
     const filteredData = useMemo(() => {
@@ -79,21 +111,63 @@ function Devices() {
             </div>
 
             {/* Table with horizontal scroll */}
-            <div className="w-full overflow-x-auto">
-                <div className="inline-block min-w-[700px] w-full">
-                    <Table
-                        columns={tableColumns}
-                        data={filteredData}
-                        pageSize={5}
-                        tableClass="bg-[#0F2A52] rounded-lg"
-                        headerStyle={{ backgroundColor: "#0A1A3A", color: "#9BB3D6" }}
-                        rowStyle={{ color: "#fff" }}
-                        hoverStyle={{ backgroundColor: "#0F2A52" }}
-                        footerClass="flex justify-between text-sm mt-2"
-                        paginationClass="flex gap-4 text-[#9BB3D6]"
-                    />
+            {tableData.length === 0 ? (
+                <div className="p-8 bg-[#0F2A52] rounded-lg text-center">
+                    <p className="text-[#9BB3D6] text-sm">No devices found. Devices will appear here when available.</p>
                 </div>
-            </div>
+            ) : (
+                <div className="w-full overflow-x-auto">
+                    <div className="inline-block min-w-[700px] w-full">
+                        <Table
+                            columns={tableColumns}
+                            data={filteredData}
+                            pageSize={5}
+                            tableClass="bg-[#0F2A52] rounded-lg"
+                            headerStyle={{ backgroundColor: "#0A1A3A", color: "#9BB3D6" }}
+                            rowStyle={{ color: "#fff" }}
+                            hoverStyle={{ backgroundColor: "#0F2A52" }}
+                            footerClass="flex justify-between text-sm mt-2"
+                            paginationClass="flex gap-4 text-[#9BB3D6]"
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Device Modal */}
+            {isEditModalOpen && selectedDevice && (
+                <div className="fixed inset-0 z-50 p-5 flex items-center justify-center bg-black/40">
+                    <div className="bg-[#0F2A52] rounded-2xl w-full max-w-2xl p-6 relative">
+                        <button
+                            className="absolute top-4 right-4 text-white text-xl font-bold cursor-pointer hover:text-gray-500"
+                            onClick={() => {
+                                setEditModalOpen(false);
+                                setSelectedDevice(null);
+                            }}
+                        >
+                            &times;
+                        </button>
+                        <EditDeviceModal 
+                            device={selectedDevice} 
+                            onSave={handleEditDevice} 
+                            onClose={() => {
+                                setEditModalOpen(false);
+                                setSelectedDevice(null);
+                            }} 
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                message="Are you sure you want to delete this device?"
+                onConfirm={handleDeleteDevice}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setDeleteIndex(null);
+                }}
+            />
         </div>
     );
 }

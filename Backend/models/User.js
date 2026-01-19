@@ -1,5 +1,6 @@
 import bcryptjs from 'bcryptjs';
 import { db } from '../config/firebase.js';
+import admin from 'firebase-admin';
 
 const USERS_COLLECTION = 'users';
 
@@ -71,7 +72,7 @@ export const User = {
     };
 
     const docRef = await db.collection(USERS_COLLECTION).add(userDoc);
-    
+
     return {
       id: docRef.id,
       ...userDoc,
@@ -82,7 +83,7 @@ export const User = {
   // Find user by ID
   async findById(userId) {
     const doc = await db.collection(USERS_COLLECTION).doc(userId).get();
-    
+
     if (!doc.exists) {
       return null;
     }
@@ -97,30 +98,34 @@ export const User = {
 
   // Find user by email or username
   async findByEmailOrUsername(email, username) {
-    const emailQuery = await db.collection(USERS_COLLECTION)
-      .where('email', '==', email.toLowerCase().trim())
-      .limit(1)
-      .get();
+    if (email) {
+      const emailQuery = await db.collection(USERS_COLLECTION)
+        .where('email', '==', email.toLowerCase().trim())
+        .limit(1)
+        .get();
 
-    if (!emailQuery.empty) {
-      const doc = emailQuery.docs[0];
-      return {
-        id: doc.id,
-        ...doc.data()
-      };
+      if (!emailQuery.empty) {
+        const doc = emailQuery.docs[0];
+        return {
+          id: doc.id,
+          ...doc.data()
+        };
+      }
     }
 
-    const usernameQuery = await db.collection(USERS_COLLECTION)
-      .where('username', '==', username.trim())
-      .limit(1)
-      .get();
+    if (username) {
+      const usernameQuery = await db.collection(USERS_COLLECTION)
+        .where('username', '==', username.trim())
+        .limit(1)
+        .get();
 
-    if (!usernameQuery.empty) {
-      const doc = usernameQuery.docs[0];
-      return {
-        id: doc.id,
-        ...doc.data()
-      };
+      if (!usernameQuery.empty) {
+        const doc = usernameQuery.docs[0];
+        return {
+          id: doc.id,
+          ...doc.data()
+        };
+      }
     }
 
     return null;
@@ -219,9 +224,80 @@ export const User = {
   // Delete user
   async delete(userId) {
     await db.collection(USERS_COLLECTION).doc(userId).delete();
+  },
+
+  // Get all users (excluding admins by default, or all if includeAdmins is true)
+  async findAll(includeAdmins = false) {
+    const snapshot = await db.collection(USERS_COLLECTION).get();
+    
+    return snapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          password: undefined // Don't return password
+        };
+      })
+      .filter(user => includeAdmins || user.role !== 'admin');
+  },
+
+  // Create or find OAuth user (for Google SSO)
+  async createOrFindOAuthUser(oauthData) {
+    const { email, name, googleId, picture } = oauthData;
+    
+    // Check if user exists by email
+    const existingUser = await this.findByEmailOrUsername(email, null);
+    
+    if (existingUser) {
+      // Update user with Google ID if not already set
+      if (!existingUser.googleId && googleId) {
+        await db.collection(USERS_COLLECTION).doc(existingUser.id).update({
+          googleId,
+          updatedAt: admin.firestore.Timestamp.now()
+        });
+      }
+      return {
+        id: existingUser.id,
+        ...existingUser,
+        password: undefined
+      };
+    }
+
+    // Create new OAuth user
+    // Generate username from name or email
+    const username = name 
+      ? name.trim().substring(0, 30).replace(/[^A-Za-z0-9 ]/g, '') || email.split('@')[0].substring(0, 30)
+      : email.split('@')[0].substring(0, 30);
+    
+    // Ensure username is unique
+    let finalUsername = username;
+    let counter = 1;
+    while (await this.findByEmailOrUsername(null, finalUsername)) {
+      finalUsername = `${username}${counter}`.substring(0, 30);
+      counter++;
+    }
+
+    const userDoc = {
+      username: finalUsername,
+      email: email.toLowerCase().trim(),
+      googleId,
+      picture: picture || null,
+      role: 'user',
+      authProvider: 'google', // Track auth provider
+      // Note: password is optional for OAuth users
+      createdAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now()
+    };
+
+    const docRef = await db.collection(USERS_COLLECTION).add(userDoc);
+
+    return {
+      id: docRef.id,
+      ...userDoc,
+      password: undefined
+    };
   }
 };
-
-import admin from 'firebase-admin';
 
 export default User;

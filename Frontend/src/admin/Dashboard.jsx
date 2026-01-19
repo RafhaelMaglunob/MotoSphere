@@ -22,18 +22,19 @@ function formatTimeAgo(secondsAgo) {
 }
 
 function Dashboard() {
-    const recentAlerts = [
-        {deviceNo: 8832, time_of_occurence: 22},
-        {deviceNo: 8592, time_of_occurence: 122130},
-        {deviceNo: 8640, time_of_occurence: 13132}
-    ]
+    // Recent alerts - will be populated from API/database in the future
+    const recentAlerts = [];
     
-    const systemActivity = [
-        {action: "registration", time: "10:42 AM"},
-        {action: "registration", time: "9:42 AM"},
-        {action: "registration", time: "8:42 AM"},
-        {action: "registration", time: "7:42 AM"}
-    ]
+    // System activity - will be populated from API/database in the future
+    const systemActivity = [];
+
+    // Dashboard stats - will be populated from API/database in the future
+    const stats = {
+        totalUsers: 0,
+        onlineDevices: 0,
+        activeAlerts: 0,
+        systemHealth: 0
+    };
 
     return (
         <div>
@@ -46,12 +47,12 @@ function Dashboard() {
                         <div className="p-3 rounded-md bg-[#0A1A3A]">
                             <UsersIcon className="text-[#22D3EE]" />
                         </div>
-                        <p className="text-[#4ADE80] text-xs">+12% this month</p>
+                        <p className="text-[#4ADE80] text-xs">--</p>
                     </div>
 
                     <div className="mt-3">
                         <label className="text-[#9BB3D6] text-xs">Total Users</label>
-                        <h1 className="text-white font-bold text-2xl">1234</h1>
+                        <h1 className="text-white font-bold text-2xl">{stats.totalUsers}</h1>
                     </div>
                 </div>
                 <div className="bg-[#0F2A52] p-5 rounded-3xl">
@@ -59,12 +60,12 @@ function Dashboard() {
                         <div className="p-3 rounded-md bg-[#0A1A3A]">
                             <DevicesIcon className="text-[#4ADE80]" />
                         </div>
-                        <p className="text-[#4ADE80] text-xs">+5% vs yesterday</p>
+                        <p className="text-[#4ADE80] text-xs">--</p>
                     </div>
                     
                     <div className="mt-3">
                         <label className="text-[#9BB3D6] text-xs">Online Devices</label>
-                        <h1 className="text-white font-bold text-2xl">856</h1>
+                        <h1 className="text-white font-bold text-2xl">{stats.onlineDevices}</h1>
                     </div>
                 </div>
                 <div className="bg-[#0F2A52] p-5 rounded-3xl">
@@ -72,12 +73,12 @@ function Dashboard() {
                         <div className="p-3 rounded-md bg-[#0A1A3A]">
                             <AlertIcon className="text-[#F87171]" />
                         </div>
-                        <p className="text-[#4ADE80] text-xs">+2% from last hour</p>
+                        <p className="text-[#4ADE80] text-xs">--</p>
                     </div>
                     
                     <div className="mt-3">
                         <label className="text-[#9BB3D6] text-xs">Active Alert</label>
-                        <h1 className="text-white font-bold text-2xl">3</h1>
+                        <h1 className="text-white font-bold text-2xl">{stats.activeAlerts}</h1>
                     </div>
                 </div>
                 <div className="bg-[#0F2A52] p-5 rounded-3xl">
@@ -90,7 +91,7 @@ function Dashboard() {
                     
                     <div className="mt-3">
                         <label className="text-[#9BB3D6] text-xs">System Health</label>
-                        <h1 className="text-white font-bold text-2xl">99%</h1>
+                        <h1 className="text-white font-bold text-2xl">{stats.systemHealth}%</h1>
                     </div>
                 </div>
             </div>
@@ -101,38 +102,45 @@ function Dashboard() {
                     <h1 className="text-white font-semibold text-xl mb-6">Recent Alerts</h1>
 
                     {/* Crash Detected, Accident Detected, etc. */}
-                    {recentAlerts.map((alert, index) => (
-                       <div className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
-                            <div className="flex flex-row gap-4">
-                                <div className="bg-[#EF4444]/20 rounded-md p-2 ">
-                                    <AlertIcon className="text-[#F87171]" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <h1 className="text-white text-sm">Crash Detected</h1>
-                                    <span className="text-[#9BB3D6] text-xs">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
+                    {recentAlerts.length === 0 ? (
+                        <div className="p-6 text-center">
+                            <p className="text-[#9BB3D6] text-sm">No recent alerts. Alerts will appear here when available.</p>
+                        </div>
+                    ) : (
+                        recentAlerts.map((alert, index) => (
+                            <div key={index} className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
+                                <div className="flex flex-row gap-4">
+                                    <div className="bg-[#EF4444]/20 rounded-md p-2 ">
+                                        <AlertIcon className="text-[#F87171]" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h1 className="text-white text-sm">Crash Detected</h1>
+                                        <span className="text-[#9BB3D6] text-xs">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            {/*<div>
-                                <button key={index} className="text-[#F87171] bg-[#EF4444]/10 py-2 px-4 rounded-lg">View</button>
-                            </div>*/}
-                       </div>
-                    ))}
+                        ))
+                    )}
 
                     
                 </div>
                 <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
                     <h1 className="text-white font-semibold text-xl mb-6">System Activity</h1>
-                    {systemActivity.map((act, index) => (
-                        <div key={index} className="mb-3 flex flex-row">
-                            <BsDot className="text-[#06B6D4] text-4xl mt-[-8px]" />
-                            <div className="text-[#9BB3D6] text-sm font-light flex flex-col">
-                                
-                                <span className="text-white">New user {act.action} verified</span>
-                                <span className="text-xs">{act.time} • System Auto check</span>
-                            </div>
+                    {systemActivity.length === 0 ? (
+                        <div className="p-6 text-center">
+                            <p className="text-[#9BB3D6] text-sm">No system activity. Activity logs will appear here when available.</p>
                         </div>
-                    ))}
+                    ) : (
+                        systemActivity.map((act, index) => (
+                            <div key={index} className="mb-3 flex flex-row">
+                                <BsDot className="text-[#06B6D4] text-4xl mt-[-8px]" />
+                                <div className="text-[#9BB3D6] text-sm font-light flex flex-col">
+                                    <span className="text-white">New user {act.action} verified</span>
+                                    <span className="text-xs">{act.time} • System Auto check</span>
+                                </div>
+                            </div>
+                        ))
+                    )}
 
                 </div>
             </div>

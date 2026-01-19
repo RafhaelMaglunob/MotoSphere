@@ -17,6 +17,7 @@ import UserSettings from "./user/Settings";
 import UserContactPersons from "./user/ContactPersons";
 import UserNotifications from "./user/Notifications";
 import UserRegister from "./user/Register";
+import ForgotPassword from "./user/ForgotPassword";
 
 /* Landing Page */
 import LandingLayout from "./user/LandingLayout";
@@ -45,6 +46,7 @@ function App() {
         {/* User Login */}
         <Route path="/user-login" element={<UserLogin />} />
         <Route path="/user-register" element={<UserRegister />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Landing Routes */}
         <Route element={<LandingLayout />}>

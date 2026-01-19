@@ -9,7 +9,7 @@ const createAdmin = async () => {
     console.log('🔍 Checking for existing admin user...');
 
     // Check if admin already exists
-    const existingAdmin = await User.findAdminForLogin('admin@motosphere.com');
+    const existingAdmin = await User.findAdminForLogin('admin@gmail.com');
     if (existingAdmin) {
       console.log('⚠️  Admin user already exists');
       console.log(`📧 Email: ${existingAdmin.email}`);
@@ -19,14 +19,14 @@ const createAdmin = async () => {
     // Create admin user
     const admin = await User.create({
       username: 'admin',
-      email: 'admin@motosphere.com',
+      email: 'admin@gmail.com',
       contactNo: '09123456789',
       password: 'Admin@123', // Change this password after first login
       role: 'admin'
     });
 
     console.log('✅ Admin user created successfully!');
-    console.log('📧 Email: admin@motosphere.com');
+    console.log('📧 Email: admin@gmail.com');
     console.log('🔑 Password: Admin@123');
     console.log('⚠️  Please change the password after first login!');
 

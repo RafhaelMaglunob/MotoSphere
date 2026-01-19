@@ -38,7 +38,8 @@ function Login() {
                 localStorage.setItem('user', JSON.stringify(response.user));
 
                 // Navigate to admin dashboard
-                navigate("/admin/dashboard");
+                // Use replace to prevent going back to login page
+                navigate("/admin/dashboard", { replace: true });
             } else {
                 setError(response.message || 'Login failed');
             }
@@ -69,7 +70,7 @@ function Login() {
                             <label className="text-sm text-[#9BB3D6]">Email or Username</label>
                             <input
                                 type="text"
-                                placeholder="admin@motosphere.com"
+                                placeholder="admin@gmail.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-70 md:w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"

@@ -103,6 +103,74 @@ export const authAPI = {
       body: JSON.stringify(profileData),
     });
   },
+
+  // Get all users (Admin only)
+  getAllUsers: async () => {
+    return apiCall('/auth/users', {
+      method: 'GET',
+    });
+  },
+
+  // Update user (Admin only)
+  updateUser: async (userId, userData) => {
+    return apiCall(`/auth/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  // Delete user (Admin only)
+  deleteUser: async (userId) => {
+    return apiCall(`/auth/users/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Get user contacts
+  getContacts: async () => {
+    return apiCall('/auth/contacts', {
+      method: 'GET',
+    });
+  },
+
+  // Add contact
+  addContact: async (contactData) => {
+    return apiCall('/auth/contacts', {
+      method: 'POST',
+      body: JSON.stringify(contactData),
+    });
+  },
+
+  // Update contact
+  updateContact: async (contactId, contactData) => {
+    return apiCall(`/auth/contacts/${contactId}`, {
+      method: 'PUT',
+      body: JSON.stringify(contactData),
+    });
+  },
+
+  // Delete contact
+  deleteContact: async (contactId) => {
+    return apiCall(`/auth/contacts/${contactId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Forgot password
+  forgotPassword: async (email) => {
+    return apiCall('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  // Google OAuth login
+  googleLogin: async (idToken) => {
+    return apiCall('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    });
+  },
 };
 
 export default apiCall;

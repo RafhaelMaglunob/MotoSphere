@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function Table({
   columns = [],
@@ -11,8 +11,13 @@ function Table({
 }) {
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Reset to page 1 when data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data.length]);
+
   const totalItems = data.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
 
   const startItem = (currentPage - 1) * pageSize;
   const endItem = Math.min(currentPage * pageSize, totalItems);

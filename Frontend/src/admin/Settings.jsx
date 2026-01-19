@@ -1,10 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 function Settings() {
-    const [adminName, setAdminName] = useState("Admin");
-    const [adminEmail, setAdminEmail] = useState("admin@example.com");
+    // Load admin data from localStorage
+    const [adminName, setAdminName] = useState("");
+    const [adminEmail, setAdminEmail] = useState("");
     const [password, setPassword] = useState("");
     const [notifications, setNotifications] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+
+    useEffect(() => {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                setAdminName(user.username || "");
+                setAdminEmail(user.email || "");
+            } catch (error) {
+                console.error("Error parsing admin data:", error);
+            }
+        }
+    }, []);
 
     // Modal state
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -12,14 +30,46 @@ function Settings() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
 
-    const handleSave = () => {
-        console.log({
-            adminName,
-            adminEmail,
-            password: password ? "***hidden***" : "(unchanged)",
-            notifications
-        });
-        alert("Settings saved successfully!");
+    const handleSave = async () => {
+        setError("");
+        setSuccess("");
+
+        // Validation
+        if (!adminName || adminName.trim().length === 0) {
+            setError("Admin name is required");
+            return;
+        }
+
+        if (!adminEmail || adminEmail.trim().length === 0) {
+            setError("Email is required");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await authAPI.updateProfile({
+                username: adminName.trim(),
+                email: adminEmail.trim()
+            });
+
+            if (response.success) {
+                // Update localStorage with new admin data
+                const userData = JSON.parse(localStorage.getItem("user") || "{}");
+                userData.username = response.user.username;
+                userData.email = response.user.email;
+                localStorage.setItem("user", JSON.stringify(userData));
+
+                setSuccess("Settings saved successfully!");
+                setTimeout(() => setSuccess(""), 3000);
+            } else {
+                setError(response.message || "Failed to save settings");
+            }
+        } catch (err) {
+            setError(err.message || "Failed to save settings. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleChangePassword = () => {
@@ -44,6 +94,18 @@ function Settings() {
     return (
         <div className="p-8 flex flex-col gap-6 text-white bg-[#0F2A52] h-fit rounded-2xl relative">
             <h1 className="text-2xl font-bold">Admin Settings</h1>
+
+            {error && (
+                <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                    <p className="text-red-400 text-sm">{error}</p>
+                </div>
+            )}
+
+            {success && (
+                <div className="p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+                    <p className="text-green-400 text-sm">{success}</p>
+                </div>
+            )}
 
             {/* Admin Info */}
             <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
@@ -90,9 +152,10 @@ function Settings() {
             <div className="flex justify-end">
                 <button
                     onClick={handleSave}
-                    className="px-6 py-3 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] font-semibold"
+                    disabled={loading}
+                    className="px-6 py-3 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
                 >
-                    Save Settings
+                    {loading ? "Saving..." : "Save Settings"}
                 </button>
             </div>
 

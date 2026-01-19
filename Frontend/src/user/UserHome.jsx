@@ -65,31 +65,39 @@ function UserHome() {
                 {/* CONTACTS */}
                 <div className="web-fade-in delay-3">
                     <h1 className={`${isLight ? "text-black" : "text-white" } font-semibold mt-6`}>Trusted Contacts</h1>
-                    <div className="p-3 grid md:grid-cols-3 gap-3 ">
-                        {contacts.map((contact, index) => (
-                            <div key={index} className={`${isLight ? "bg-white" : "bg-[#050816]/80"} flex-1 p-6 rounded-2xl`}>
-                                <div className="flex flex-row gap-3">
-                                    <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]/75"} p-3 rounded-xl`}>
-                                        <ProfileIconOutline className="text-[#0A1A3A]/30 h-9 w-9"/>
+                    {contacts.length === 0 ? (
+                        <div className={`${isLight ? "bg-white" : "bg-[#050816]/80"} p-8 rounded-2xl text-center mt-3`}>
+                            <p className={`${isLight ? "text-black/60" : "text-[#9BB3D6]"} text-sm`}>
+                                No trusted contacts yet. Add contacts in the Contact Persons section.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="p-3 grid md:grid-cols-3 gap-3 ">
+                            {contacts.map((contact, index) => (
+                                <div key={index} className={`${isLight ? "bg-white" : "bg-[#050816]/80"} flex-1 p-6 rounded-2xl`}>
+                                    <div className="flex flex-row gap-3">
+                                        <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]/75"} p-3 rounded-xl`}>
+                                            <ProfileIconOutline className="text-[#0A1A3A]/30 h-9 w-9"/>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <h1 className={`${isLight ? "text-black" : "text-white"} font-semibold text-md`}>{contact.name}</h1>
+                                            <span className="bg-[#39A9FF]/10 text-[#39A9FF] rounded-md w-fit text-xs px-3 py-1">{contact.relation}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col gap-1">
-                                        <h1 className={`${isLight ? "text-black" : "text-white"} font-semibold text-md`}>{contact.name}</h1>
-                                        <span className="bg-[#39A9FF]/10 text-[#39A9FF] rounded-md w-fit text-xs px-3 py-1">{contact.relation}</span>
+                                    <div className="flex flex-col gap-2 mt-6">
+                                        <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
+                                            <PhoneIcon color={isLight ? "black" : '#39A9FF'} className="w-4 h-4"/>
+                                            {contact.contactNo}
+                                        </div>   
+                                        <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
+                                            <MailIcon innerColor={isLight ? "black" : '#007BFF'} innerOpacity={0.7} borderColor={isLight ? "black" : '#39A9FF'} borderOpacity={0.7} className="w-4 h-4"/>
+                                            {contact.email}
+                                        </div>                                     
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-2 mt-6">
-                                    <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
-                                        <PhoneIcon color={isLight ? "black" : '#39A9FF'} className="w-4 h-4"/>
-                                        {contact.contactNo}
-                                    </div>   
-                                    <div className={`${isLight ? "text-black" : "text-white"} flex flex-row items-center gap-3 text-sm font-light`}>
-                                        <MailIcon innerColor={isLight ? "black" : '#007BFF'} innerOpacity={0.7} borderColor={isLight ? "black" : '#39A9FF'} borderOpacity={0.7} className="w-4 h-4"/>
-                                        {contact.email}
-                                    </div>                                     
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
             </div>

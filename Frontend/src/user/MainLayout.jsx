@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, Navigate } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
+import { authAPI } from '../services/api';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
@@ -34,23 +35,79 @@ function MainLayout() {
     const location = useLocation();
     const [username, setUsername] = useState("")
     const [email, setEmail] = useState("")
+    const [contacts, setContacts] = useState([])
     const deviceNo = "MK-II"
     const lastSynced = "2"
     const isConnected = false
 
-    // Load user data from localStorage on mount
+    // Load user data from localStorage on mount and check role
     useEffect(() => {
         const userData = localStorage.getItem("user");
-        if (userData) {
-            try {
-                const user = JSON.parse(userData);
-                setUsername(user.username || "");
-                setEmail(user.email || "");
-            } catch (error) {
-                console.error("Error parsing user data:", error);
+        const token = localStorage.getItem("token");
+        
+        if (!token || !userData) {
+            // No token or user data, redirect to login
+            navigate('/user-login', { replace: true });
+            return;
+        }
+
+        try {
+            const user = JSON.parse(userData);
+            
+            // If user is admin, redirect to admin dashboard
+            if (user.role === 'admin') {
+                navigate('/admin/dashboard', { replace: true });
+                return;
             }
+            
+            setUsername(user.username || "");
+            setEmail(user.email || "");
+        } catch (error) {
+            console.error("Error parsing user data:", error);
+            navigate('/user-login', { replace: true });
+        }
+    }, [navigate]);
+
+    // Fetch contacts from API
+    useEffect(() => {
+        const fetchContacts = async () => {
+            try {
+                const response = await authAPI.getContacts();
+                if (response.success) {
+                    setContacts(response.contacts || []);
+                }
+            } catch (error) {
+                console.error("Error fetching contacts:", error);
+                // Set empty array on error
+                setContacts([]);
+            }
+        };
+
+        // Only fetch if user is authenticated
+        const token = localStorage.getItem("token");
+        if (token) {
+            fetchContacts();
         }
     }, []);
+
+    // Check if user is authenticated and not admin
+    const userData = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    
+    if (!token || !userData) {
+        return <Navigate to="/user-login" replace />;
+    }
+
+    let user;
+    try {
+        user = JSON.parse(userData);
+        // If admin, redirect to admin dashboard
+        if (user.role === 'admin') {
+            return <Navigate to="/admin/dashboard" replace />;
+        }
+    } catch (error) {
+        return <Navigate to="/user-login" replace />;
+    }
 
     useEffect(() => {
         localStorage.setItem("isLight", JSON.stringify(isLight));
@@ -61,9 +118,6 @@ function MainLayout() {
         {type: "Gyroscope", connection: "Inactive"},
         {type: "Camera", connection: "Active"},
     ]
-
-    // Contact persons - will be populated from API/database in the future
-    const contacts = [];
     
     const buttons = [
         {icon: DashboardIcon, name: "Home", path: "/user/home"}, 
@@ -148,6 +202,7 @@ function MainLayout() {
                         isConnected: isConnected,
                         sensors: sensors,
                         contacts: contacts,
+                        setContacts: setContacts,
                         notifications: notifications,
                         isLight,
                         setIsLight

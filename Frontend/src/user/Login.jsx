@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from '../services/api';
@@ -11,7 +11,102 @@ function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
     const navigate = useNavigate();
+    const googleButtonRef = useRef(null);
+
+    // Load Google Identity Services script
+    useEffect(() => {
+        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        
+        if (!googleClientId) {
+            console.warn('Google Client ID not configured. Google Sign-In will not work.');
+            return;
+        }
+
+        // Check if script already exists
+        if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+            // Script already loaded, just initialize
+            if (window.google && window.google.accounts) {
+                initializeGoogleSignIn(googleClientId);
+            }
+            return;
+        }
+
+        // Load Google Identity Services script
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            if (window.google && window.google.accounts) {
+                initializeGoogleSignIn(googleClientId);
+            }
+        };
+        document.head.appendChild(script);
+
+        return () => {
+            // Cleanup: remove script if component unmounts
+            const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+            if (existingScript && !document.querySelector('body[data-google-script-loaded]')) {
+                existingScript.remove();
+            }
+        };
+    }, []);
+
+    const initializeGoogleSignIn = (clientId) => {
+        if (!window.google || !window.google.accounts) return;
+
+        window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleSignIn,
+        });
+
+        // Render the button with a small delay to ensure DOM is ready
+        setTimeout(() => {
+            if (googleButtonRef.current && window.google.accounts.id.renderButton) {
+                try {
+                    window.google.accounts.id.renderButton(googleButtonRef.current, {
+                        type: 'standard',
+                        theme: 'outline',
+                        size: 'large',
+                        text: 'signin_with',
+                        width: '100%',
+                    });
+                } catch (error) {
+                    console.error('Error rendering Google button:', error);
+                }
+            }
+        }, 100);
+    };
+
+    const handleGoogleSignIn = async (response) => {
+        setError('');
+        setGoogleLoading(true);
+
+        try {
+            const authResponse = await authAPI.googleLogin(response.credential);
+
+            if (authResponse.success) {
+                // Store token in localStorage
+                localStorage.setItem('token', authResponse.token);
+                localStorage.setItem('user', JSON.stringify(authResponse.user));
+
+                // Check user role and redirect accordingly
+                if (authResponse.user.role === 'admin') {
+                    navigate("/admin/dashboard", { replace: true });
+                } else {
+                    navigate("/user/home", { replace: true });
+                }
+            } else {
+                setError(authResponse.message || 'Google login failed');
+            }
+        } catch (err) {
+            setError(err.message || 'Google authentication failed. Please try again.');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -38,8 +133,14 @@ function Login() {
                 localStorage.setItem('token', response.token);
                 localStorage.setItem('user', JSON.stringify(response.user));
 
-                // Navigate to user home
-                navigate("/user/home");
+                // Check user role and redirect accordingly
+                if (response.user.role === 'admin') {
+                    // Admin users go to admin dashboard
+                    navigate("/admin/dashboard", { replace: true });
+                } else {
+                    // Regular users go to user home
+                    navigate("/user/home", { replace: true });
+                }
             } else {
                 setError(response.message || 'Login failed');
             }
@@ -111,17 +212,49 @@ function Login() {
                                     Remember this device
                                 </label>
                             </div>
-                            <span className="text-[#22D3EE] text-xs">Forgot Password?</span>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/forgot-password")}
+                                className="text-[#22D3EE] text-xs cursor-pointer hover:underline"
+                            >
+                                Forgot Password?
+                            </button>
                         </div>
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || googleLoading}
                             className="bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-center text-white text-sm w-full py-3 rounded-xl mt-6 transition-colors"
                         >
                             {loading ? 'Logging in...' : 'Login'}
                         </button>
                     </form>
+
+                    {/* Divider */}
+                    <div className="flex items-center w-full my-4">
+                        <div className="flex-1 border-t border-[#334155]"></div>
+                        <span className="px-4 text-[#94A3B8] text-xs">OR</span>
+                        <div className="flex-1 border-t border-[#334155]"></div>
+                    </div>
+
+                    {/* Google Sign-In Button */}
+                    <div className="w-full flex flex-col items-center">
+                        <div 
+                            ref={googleButtonRef}
+                            className={`w-full ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                            style={{ minHeight: '40px' }}
+                        ></div>
+                        {googleLoading && (
+                            <div className="mt-2">
+                                <span className="text-[#22D3EE] text-sm">Signing in with Google...</span>
+                            </div>
+                        )}
+                        {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                            <p className="text-xs text-[#94A3B8] mt-2 text-center">
+                                Google Sign-In not configured
+                            </p>
+                        )}
+                    </div>
 
                     <div className="flex flex-row mt-4 justify-between w-full md:px-4">
                         <label className="text-[#94A3B8] text-xs">Dont have an account yet?</label>
