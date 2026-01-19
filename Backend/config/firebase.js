@@ -60,20 +60,36 @@ const initializeFirebase = () => {
       }
       // Option 4: Use default credentials (for Firebase emulator or GCP)
       else {
-        firebaseApp = admin.initializeApp({
-          projectId: process.env.FIREBASE_PROJECT_ID || 'motosphere'
-        });
+        console.warn('⚠️  No Firebase credentials found. Attempting to use default credentials...');
+        try {
+          firebaseApp = admin.initializeApp({
+            projectId: process.env.FIREBASE_PROJECT_ID || 'motosphere'
+          });
+        } catch (defaultError) {
+          console.error('❌ Could not initialize Firebase with default credentials.');
+          console.error('Please configure Firebase credentials in your .env file.');
+          console.error('See Backend/README.md for setup instructions.');
+          // Don't throw - allow the app to continue, but Firebase operations will fail
+          // This prevents the entire server from crashing
+          initialized = false;
+          return null;
+        }
       }
       
-      console.log('✅ Firebase Admin initialized');
-      initialized = true;
+      if (firebaseApp) {
+        console.log('✅ Firebase Admin initialized');
+        initialized = true;
+      }
     } else {
       firebaseApp = admin.app();
       initialized = true;
     }
   } catch (error) {
-    console.error('❌ Firebase initialization error:', error);
-    throw error;
+    console.error('❌ Firebase initialization error:', error.message);
+    console.error('⚠️  Firebase operations will not work until credentials are configured.');
+    // Don't throw - allow the app to continue
+    initialized = false;
+    return null;
   }
 
   return firebaseApp;
@@ -82,10 +98,20 @@ const initializeFirebase = () => {
 // Initialize Firebase immediately
 firebaseApp = initializeFirebase();
 
-// Get Firestore instance
-export const db = admin.firestore();
+// Get Firestore instance (with error handling)
+let db;
+let auth;
+try {
+  if (firebaseApp) {
+    db = admin.firestore();
+    auth = admin.auth();
+  } else {
+    console.warn('⚠️  Firestore and Auth instances not available - Firebase not initialized');
+  }
+} catch (error) {
+  console.error('❌ Error creating Firestore/Auth instances:', error.message);
+}
 
-// Get Auth instance (if needed for Firebase Auth)
-export const auth = admin.auth();
+export { db, auth };
 
 export default firebaseApp;

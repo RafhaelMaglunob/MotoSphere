@@ -46,6 +46,10 @@ export const comparePassword = async (candidatePassword, hashedPassword) => {
 export const User = {
   // Create a new user
   async create(userData) {
+    if (!db) {
+      throw new Error('Database not initialized. Please configure Firebase credentials in your .env file.');
+    }
+
     const validationErrors = validateUser(userData);
     if (validationErrors.length > 0) {
       throw new Error(validationErrors.join(', '));
@@ -98,6 +102,10 @@ export const User = {
 
   // Find user by email or username
   async findByEmailOrUsername(email, username) {
+    if (!db) {
+      throw new Error('Database not initialized. Please configure Firebase credentials in your .env file.');
+    }
+
     if (email) {
       const emailQuery = await db.collection(USERS_COLLECTION)
         .where('email', '==', email.toLowerCase().trim())

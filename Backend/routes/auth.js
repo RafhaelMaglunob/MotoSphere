@@ -155,9 +155,22 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Provide user-friendly error messages
+    let errorMessage = error.message || 'Registration failed';
+    
+    // Check if it's a Firebase/database error
+    if (error.message && error.message.includes('Database not initialized')) {
+      errorMessage = 'Server configuration error. Please contact the administrator.';
+      console.error('Firebase not configured - registration cannot proceed');
+    } else if (error.message && error.message.includes('default credentials')) {
+      errorMessage = 'Server configuration error. Please contact the administrator.';
+      console.error('Firebase credentials error - registration cannot proceed');
+    }
+    
     res.status(500).json({
       success: false,
-      message: error.message || 'Registration failed'
+      message: errorMessage
     });
   }
 });

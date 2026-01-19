@@ -154,11 +154,20 @@ export default function Register() {
       } else {
         setSubmitError(authResponse.message || 'Google registration failed');
       }
-    } catch (err) {
-      setSubmitError(err.message || 'Google authentication failed. Please try again.');
-    } finally {
-      setGoogleLoading(false);
-    }
+      } catch (err) {
+        // Filter out technical Firebase errors
+        let errorMessage = err.message || 'Google authentication failed. Please try again.';
+        
+        if (errorMessage.includes('default credentials') || 
+            errorMessage.includes('cloud.google.com') ||
+            errorMessage.includes('Database not initialized')) {
+          errorMessage = "Server configuration error. Please contact the administrator.";
+        }
+        
+        setSubmitError(errorMessage);
+      } finally {
+        setGoogleLoading(false);
+      }
   };
 
   // ================= HANDLER =================
@@ -203,11 +212,20 @@ export default function Register() {
       } else {
         setSubmitError(response.message || "Registration failed");
       }
-    } catch (err) {
-      setSubmitError(err.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+      } catch (err) {
+        // Filter out technical Firebase errors and show user-friendly messages
+        let errorMessage = err.message || "Registration failed. Please try again.";
+        
+        if (errorMessage.includes('default credentials') || 
+            errorMessage.includes('cloud.google.com') ||
+            errorMessage.includes('Database not initialized')) {
+          errorMessage = "Server configuration error. Please contact the administrator.";
+        }
+        
+        setSubmitError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
   };
 
   return (
@@ -249,9 +267,16 @@ export default function Register() {
         <span className="text-2xl font-bold text-white">Register</span>
         <span className="text-[#94A3B8]">Create your MotoSphere account</span>
 
-        {submitError && (
+        {submitError && !submitError.includes('default credentials') && !submitError.includes('cloud.google.com') && (
           <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
             <p className="text-red-400 text-sm text-center">{submitError}</p>
+          </div>
+        )}
+        {submitError && (submitError.includes('default credentials') || submitError.includes('cloud.google.com')) && (
+          <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+            <p className="text-yellow-400 text-sm text-center">
+              Server configuration issue detected. Please contact the administrator or check server logs.
+            </p>
           </div>
         )}
 
