@@ -1,8 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
 import { useNavigate } from 'react-router-dom';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from './firebase';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
@@ -16,12 +19,70 @@ import Logout from "../component/img/Logout.png";
 function MainLayout() {
     const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
+    const [userData, setUserData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    
     const buttons = [
         {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 
         {icon: UsersIcon, name: "Users", path: "/admin/users"},
         {icon: DevicesIcon, name: "Devices", path: "/admin/devices"},
         {icon: SettingsIcon, name: "Settings", path: "/admin/settings"}
     ]
+
+    // Fetch current user data
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    // Try to get user document by UID first
+                    let userDoc = null;
+                    let userInfo = null;
+
+                    const userDocByUid = doc(db, 'users', user.uid);
+                    const uidDocSnap = await getDoc(userDocByUid);
+                    
+                    if (uidDocSnap.exists()) {
+                        userDoc = uidDocSnap;
+                        userInfo = uidDocSnap.data();
+                    } else {
+                        // If document doesn't exist by UID, try to find by email
+                        const usersRef = collection(db, 'users');
+                        const q = query(usersRef, where('email', '==', user.email?.toLowerCase().trim()));
+                        const querySnapshot = await getDocs(q);
+
+                        if (!querySnapshot.empty) {
+                            userDoc = querySnapshot.docs[0];
+                            userInfo = userDoc.data();
+                        }
+                    }
+
+                    if (userInfo) {
+                        setUserData(userInfo);
+                    } else {
+                        // Fallback to Firebase Auth user data
+                        setUserData({
+                            name: user.displayName || user.email?.split('@')[0] || 'Admin User',
+                            role: 'admin',
+                            email: user.email
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error fetching user data:', error);
+                    // Fallback to Firebase Auth user data
+                    if (user) {
+                        setUserData({
+                            name: user.displayName || user.email?.split('@')[0] || 'Admin User',
+                            role: 'admin',
+                            email: user.email
+                        });
+                    }
+                }
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const footer = (
         <div className="flex flex-col px-5 mt-auto">
@@ -30,14 +91,35 @@ function MainLayout() {
                 <Shield className="w-5 h-5 text-[#22D3EE]" />
                 </span>
                 <div className="flex flex-col justify-center">
-                <h1 className="text-white text-sm font-bold">Admin User</h1>
-                <h4 className="text-[#9BB3D6] text-xs">Super Admin</h4>
+                    {loading ? (
+                        <>
+                            <h1 className="text-white text-sm font-bold">Loading...</h1>
+                            <h4 className="text-[#9BB3D6] text-xs">Please wait</h4>
+                        </>
+                    ) : (
+                        <>
+                            <h1 className="text-white text-sm font-bold">
+                                {userData?.name || 'Admin User'}
+                            </h1>
+                            <h4 className="text-[#9BB3D6] text-xs capitalize">
+                                {userData?.role || 'Admin'}
+                            </h4>
+                        </>
+                    )}
                 </div>
             </div>
 
             <div className="text-[#F87171] text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
                 <img src={Logout} alt="Logout" />
-                <h1 onClick={() => navigate('/admin-login')}>Log Out</h1>
+                <h1 onClick={async () => {
+                    try {
+                        await signOut(auth);
+                        navigate('/admin-login');
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                        navigate('/admin-login');
+                    }
+                }}>Log Out</h1>
             </div>
         </div>
     )

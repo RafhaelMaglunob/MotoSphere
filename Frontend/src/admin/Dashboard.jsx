@@ -1,10 +1,13 @@
-import React from 'react'
-import { BsDot } from "react-icons/bs";
+import React, { useState, useEffect } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { collection, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from './firebase';
 
-import { UsersIcon } from '../component/svg/UsersIcon.jsx';
-import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
-import { DevicesIcon } from '../component/svg/DevicesIcon.jsx';
-import { AlertIcon } from '../component/svg/AlertIcon.jsx';
+// Mock SVG Icons - replace with your actual imports
+const UsersIcon = ({ className }) => <div className={className}>👥</div>;
+const DashboardIcon = ({ className }) => <div className={className}>📊</div>;
+const DevicesIcon = ({ className }) => <div className={className}>📱</div>;
+const AlertIcon = ({ className }) => <div className={className}>⚠️</div>;
 
 function formatTimeAgo(secondsAgo) {
     if (secondsAgo < 60) {
@@ -21,7 +24,153 @@ function formatTimeAgo(secondsAgo) {
     }
 }
 
+// Simple dot component to replace BsDot
+const Dot = ({ className }) => (
+    <span className={className}>•</span>
+);
+
 function Dashboard() {
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [ridersCount, setRidersCount] = useState(0);
+    const [emergencyContactsCount, setEmergencyContactsCount] = useState(0);
+    const [monthlyGrowth, setMonthlyGrowth] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch users from Firebase
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                // Fetch riders from users collection
+                const usersRef = collection(db, 'users');
+                const usersSnapshot = await getDocs(usersRef);
+                
+                // Filter for riders (exclude admin)
+                const allUsers = usersSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Filter users by role - STRICT filtering
+                // Riders: ONLY users with role exactly "rider" (case-insensitive)
+                // Emergency Contacts: users with emergency contact related roles
+                // Admin: users with role "admin"
+                
+                const riders = allUsers.filter(user => {
+                    const role = user.role?.toLowerCase()?.trim();
+                    // ONLY count users with role exactly "rider"
+                    return role === 'rider';
+                });
+                
+                const emergencyContacts = allUsers.filter(user => {
+                    const role = user.role?.toLowerCase()?.trim();
+                    // Include users with emergency contact related roles
+                    return role === 'emergency_contact' || 
+                           role === 'emergencycontact' ||
+                           role === 'contact' ||
+                           role === 'emergency contact' ||
+                           role === 'emergency-contact';
+                });
+                
+                const adminUsers = allUsers.filter(user => {
+                    const role = user.role?.toLowerCase()?.trim();
+                    return role === 'admin';
+                });
+                
+                // Log all roles found for debugging
+                const allRoles = allUsers.map(u => ({
+                    id: u.id,
+                    email: u.email,
+                    role: u.role,
+                    roleLower: u.role?.toLowerCase()?.trim()
+                }));
+                
+                console.log(`Total users fetched: ${allUsers.length}`);
+                console.log(`Riders (role="rider" only): ${riders.length}`);
+                console.log(`Emergency Contacts: ${emergencyContacts.length}`);
+                console.log(`Admin users: ${adminUsers.length}`);
+                console.log('All users with roles:', allRoles);
+                
+                // Check for users that don't match any category
+                const uncategorized = allUsers.filter(user => {
+                    const role = user.role?.toLowerCase()?.trim();
+                    return role !== 'admin' && 
+                           role !== 'rider' &&
+                           role !== 'emergency_contact' && 
+                           role !== 'emergencycontact' &&
+                           role !== 'contact' &&
+                           role !== 'emergency contact' &&
+                           role !== 'emergency-contact';
+                });
+                
+                if (uncategorized.length > 0) {
+                    console.warn(`⚠️ Found ${uncategorized.length} users with unrecognized roles:`, 
+                        uncategorized.map(u => ({ email: u.email, role: u.role }))
+                    );
+                }
+
+                // Combine riders and emergency contacts
+                const ridersAndContacts = [...riders, ...emergencyContacts];
+
+                // Calculate users created in the past month
+                const oneMonthAgo = Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+                const usersThisMonth = ridersAndContacts.filter(user => {
+                    const createdAt = user.createdAt;
+                    if (!createdAt) return false;
+                    
+                    // Handle both Timestamp and Date objects
+                    let userDate;
+                    if (createdAt.toDate) {
+                        userDate = createdAt.toDate();
+                    } else if (createdAt instanceof Date) {
+                        userDate = createdAt;
+                    } else if (createdAt.seconds) {
+                        // Handle Firestore Timestamp format
+                        userDate = new Date(createdAt.seconds * 1000);
+                    } else {
+                        return false;
+                    }
+                    
+                    return userDate >= oneMonthAgo.toDate();
+                });
+
+                // Calculate percentage growth
+                const total = ridersAndContacts.length;
+                const thisMonth = usersThisMonth.length;
+                const percentage = total > 0 ? ((thisMonth / total) * 100).toFixed(1) : 0;
+
+                setRidersCount(riders.length);
+                setEmergencyContactsCount(emergencyContacts.length);
+                setTotalUsers(total);
+                setMonthlyGrowth(parseFloat(percentage));
+                
+                console.log('Final counts:', {
+                    riders: riders.length,
+                    emergencyContacts: emergencyContacts.length,
+                    total: total,
+                    monthlyGrowth: percentage + '%'
+                });
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUsers();
+    }, []);
+
+    // Pie chart data - only riders and emergency contacts
+    // Always show both segments even if one is 0
+    const pieData = [
+        { name: 'Riders', value: ridersCount || 0, color: '#22D3EE' },
+        { name: 'Emergency Contacts', value: emergencyContactsCount || 0, color: '#4ADE80' }
+    ];
+    
+    // Filter out zero values for display, but keep at least one segment
+    const displayPieData = pieData.filter(item => item.value > 0).length > 0 
+        ? pieData.filter(item => item.value > 0)
+        : [{ name: 'No Data', value: 1, color: '#6B7280' }];
+
     const recentAlerts = [
         {deviceNo: 8832, time_of_occurence: 22},
         {deviceNo: 8592, time_of_occurence: 122130},
@@ -35,76 +184,97 @@ function Dashboard() {
         {action: "registration", time: "7:42 AM"}
     ]
 
+    const CustomTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-[#0A1A3A] p-3 rounded-lg border border-[#1E3A5F]">
+                    <p className="text-white font-semibold">{payload[0].name}</p>
+                    <p className="text-[#9BB3D6]">{payload[0].value.toLocaleString()}</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
-        <div>
+        <div className="min-h-screen bg-[#0A1628] p-6">
             <h1 className="font-bold text-white text-xl mb-6">Dashboard</h1>
 
-            {/* Total Users, Online Devices, Active Alerts, and System Health */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                <div className="bg-[#0F2A52] p-5 rounded-3xl">
-                    <div className="flex flex-row justify-between">
-                        <div className="p-3 rounded-md bg-[#0A1A3A]">
-                            <UsersIcon className="text-[#22D3EE]" />
-                        </div>
-                        <p className="text-[#4ADE80] text-xs">+12% this month</p>
+            {/* Pie Chart Section */}
+            <div className="bg-[#0F2A52] p-8 rounded-3xl mb-10">
+                <h2 className="text-white font-semibold text-lg mb-6">Users Overview</h2>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="w-full md:w-1/2">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie
+                                    data={displayPieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    label={({ name, value, percent }) => 
+                                        value > 0 ? `${name}: ${value} (${(percent * 100).toFixed(1)}%)` : ''
+                                    }
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                >
+                                    {displayPieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
+                    
+                    {/* Legend with stats */}
+                    <div className="w-full md:w-1/2 grid grid-cols-1 gap-4">
+                        <div className="bg-[#0A1A3A] p-4 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22D3EE' }}></div>
+                                <span className="text-[#9BB3D6] text-xs">Riders</span>
+                            </div>
+                            <h3 className="text-white font-bold text-xl">
+                                {loading ? '...' : ridersCount.toLocaleString()}
+                            </h3>
+                        </div>
 
-                    <div className="mt-3">
-                        <label className="text-[#9BB3D6] text-xs">Total Users</label>
-                        <h1 className="text-white font-bold text-2xl">1234</h1>
-                    </div>
-                </div>
-                <div className="bg-[#0F2A52] p-5 rounded-3xl">
-                    <div className="flex flex-row justify-between">
-                        <div className="p-3 rounded-md bg-[#0A1A3A]">
-                            <DevicesIcon className="text-[#4ADE80]" />
+                        <div className="bg-[#0A1A3A] p-4 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#4ADE80' }}></div>
+                                <span className="text-[#9BB3D6] text-xs">Emergency Contacts</span>
+                            </div>
+                            <h3 className="text-white font-bold text-xl">
+                                {loading ? '...' : emergencyContactsCount.toLocaleString()}
+                            </h3>
                         </div>
-                        <p className="text-[#4ADE80] text-xs">+5% vs yesterday</p>
-                    </div>
-                    
-                    <div className="mt-3">
-                        <label className="text-[#9BB3D6] text-xs">Online Devices</label>
-                        <h1 className="text-white font-bold text-2xl">856</h1>
-                    </div>
-                </div>
-                <div className="bg-[#0F2A52] p-5 rounded-3xl">
-                    <div className="flex flex-row justify-between">
-                        <div className="p-3 rounded-md bg-[#0A1A3A]">
-                            <AlertIcon className="text-[#F87171]" />
+
+                        <div className="bg-[#0A1A3A] p-4 rounded-xl border-2 border-[#22D3EE]/30">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-[#9BB3D6] text-xs font-semibold">Total Users</span>
+                            </div>
+                            <h3 className="text-white font-bold text-2xl">
+                                {loading ? '...' : totalUsers.toLocaleString()}
+                            </h3>
+                            <p className="text-[#4ADE80] text-xs mt-1">
+                                {loading ? '...' : `+${monthlyGrowth}% this month`}
+                            </p>
                         </div>
-                        <p className="text-[#4ADE80] text-xs">+2% from last hour</p>
-                    </div>
-                    
-                    <div className="mt-3">
-                        <label className="text-[#9BB3D6] text-xs">Active Alert</label>
-                        <h1 className="text-white font-bold text-2xl">3</h1>
-                    </div>
-                </div>
-                <div className="bg-[#0F2A52] p-5 rounded-3xl">
-                    <div className="flex flex-row justify-between">
-                        <div className="p-3 rounded-md bg-[#0A1A3A]">
-                            <DashboardIcon className="text-[#C084FC]" />
-                        </div>
-                        <p className="text-[#4ADE80] text-xs">Stable</p>
-                    </div>
-                    
-                    <div className="mt-3">
-                        <label className="text-[#9BB3D6] text-xs">System Health</label>
-                        <h1 className="text-white font-bold text-2xl">99%</h1>
                     </div>
                 </div>
             </div>
             
             {/* Recent Alerts and System Activity */}
-            <div className="mt-10 grid grid-cols-1 md:grid-cols-2 justify-between gap-6   ">
+            <div className="grid grid-cols-1 md:grid-cols-2 justify-between gap-6">
                 <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
                     <h1 className="text-white font-semibold text-xl mb-6">Recent Alerts</h1>
 
-                    {/* Crash Detected, Accident Detected, etc. */}
                     {recentAlerts.map((alert, index) => (
-                       <div className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
+                       <div key={index} className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
                             <div className="flex flex-row gap-4">
-                                <div className="bg-[#EF4444]/20 rounded-md p-2 ">
+                                <div className="bg-[#EF4444]/20 rounded-md p-2">
                                     <AlertIcon className="text-[#F87171]" />
                                 </div>
                                 <div className="flex flex-col">
@@ -112,28 +282,21 @@ function Dashboard() {
                                     <span className="text-[#9BB3D6] text-xs">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
                                 </div>
                             </div>
-                            
-                            {/*<div>
-                                <button key={index} className="text-[#F87171] bg-[#EF4444]/10 py-2 px-4 rounded-lg">View</button>
-                            </div>*/}
                        </div>
                     ))}
-
-                    
                 </div>
+
                 <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
                     <h1 className="text-white font-semibold text-xl mb-6">System Activity</h1>
                     {systemActivity.map((act, index) => (
                         <div key={index} className="mb-3 flex flex-row">
-                            <BsDot className="text-[#06B6D4] text-4xl mt-[-8px]" />
-                            <div className="text-[#9BB3D6] text-sm font-light flex flex-col">
-                                
+                            <Dot className="text-[#06B6D4] text-4xl leading-none" />
+                            <div className="text-[#9BB3D6] text-sm font-light flex flex-col ml-2">
                                 <span className="text-white">New user {act.action} verified</span>
                                 <span className="text-xs">{act.time} • System Auto check</span>
                             </div>
                         </div>
                     ))}
-
                 </div>
             </div>
         </div>

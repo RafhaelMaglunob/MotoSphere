@@ -8,6 +8,8 @@ import AdminDashboard from "./admin/Dashboard";
 import AdminUsers from "./admin/Users";
 import AdminDevices from "./admin/Devices";
 import AdminSettings from "./admin/Settings";
+import ProtectedRoute from "./admin/ProtectedRoute";
+import SetupAdmin from "./admin/SetupAdmin";
 
 /* User Page */
 import UserLogin from "./user/Login";
@@ -33,9 +35,14 @@ function App() {
       <Routes>
         {/* Admin Login */}
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-setup" element={<SetupAdmin />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Admin Routes - Protected */}
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="devices" element={<AdminDevices />} />
