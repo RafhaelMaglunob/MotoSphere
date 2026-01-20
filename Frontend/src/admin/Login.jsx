@@ -155,7 +155,7 @@ function Login() {
 
                     <form onSubmit={handleLogin} className="w-full">
                         <div className="flex flex-col items-start w-full mt-6 gap-2">
-                            <label className="text-sm text-[#9BB3D6]">Email or Username</label>
+                            <label className="text-sm text-[#9BB3D6]">Email</label>
                             <input 
                                 type="email" 
                                 value={email}
