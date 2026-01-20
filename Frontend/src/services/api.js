@@ -164,6 +164,14 @@ export const authAPI = {
     });
   },
 
+  // Reset password
+  resetPassword: async (token, password, confirmPassword) => {
+    return apiCall('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password, confirmPassword }),
+    });
+  },
+
   // Google OAuth login
   googleLogin: async (idToken) => {
     return apiCall('/auth/google', {

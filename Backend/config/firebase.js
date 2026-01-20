@@ -103,8 +103,14 @@ let db;
 let auth;
 try {
   if (firebaseApp) {
+    // Get Firestore and Auth - they automatically use the initialized app's credentials
     db = admin.firestore();
     auth = admin.auth();
+    
+    // Verify credentials are working by checking the app
+    if (!firebaseApp.options.credential) {
+      console.warn('⚠️  Firebase app initialized without explicit credentials');
+    }
   } else {
     console.warn('⚠️  Firestore and Auth instances not available - Firebase not initialized');
   }

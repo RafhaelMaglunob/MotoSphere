@@ -106,37 +106,46 @@ export const User = {
       throw new Error('Database not initialized. Please configure Firebase credentials in your .env file.');
     }
 
-    if (email) {
-      const emailQuery = await db.collection(USERS_COLLECTION)
-        .where('email', '==', email.toLowerCase().trim())
-        .limit(1)
-        .get();
+    try {
+      if (email) {
+        const emailQuery = await db.collection(USERS_COLLECTION)
+          .where('email', '==', email.toLowerCase().trim())
+          .limit(1)
+          .get();
 
-      if (!emailQuery.empty) {
-        const doc = emailQuery.docs[0];
-        return {
-          id: doc.id,
-          ...doc.data()
-        };
+        if (!emailQuery.empty) {
+          const doc = emailQuery.docs[0];
+          return {
+            id: doc.id,
+            ...doc.data()
+          };
+        }
       }
-    }
 
-    if (username) {
-      const usernameQuery = await db.collection(USERS_COLLECTION)
-        .where('username', '==', username.trim())
-        .limit(1)
-        .get();
+      if (username) {
+        const usernameQuery = await db.collection(USERS_COLLECTION)
+          .where('username', '==', username.trim())
+          .limit(1)
+          .get();
 
-      if (!usernameQuery.empty) {
-        const doc = usernameQuery.docs[0];
-        return {
-          id: doc.id,
-          ...doc.data()
-        };
+        if (!usernameQuery.empty) {
+          const doc = usernameQuery.docs[0];
+          return {
+            id: doc.id,
+            ...doc.data()
+          };
+        }
       }
-    }
 
-    return null;
+      return null;
+    } catch (error) {
+      console.error('Error in findByEmailOrUsername:', error);
+      // Check if it's a credentials error
+      if (error.message && error.message.includes('default credentials')) {
+        throw new Error('Database authentication error. Please check Firebase credentials in your .env file.');
+      }
+      throw error;
+    }
   },
 
   // Find user by email or username (for login)
@@ -252,10 +261,20 @@ export const User = {
 
   // Create or find OAuth user (for Google SSO)
   async createOrFindOAuthUser(oauthData) {
+    if (!db) {
+      throw new Error('Database not initialized. Please configure Firebase credentials in your .env file.');
+    }
+
     const { email, name, googleId, picture } = oauthData;
     
     // Check if user exists by email
-    const existingUser = await this.findByEmailOrUsername(email, null);
+    let existingUser;
+    try {
+      existingUser = await this.findByEmailOrUsername(email, null);
+    } catch (error) {
+      console.error('Error finding existing user for OAuth:', error);
+      throw error;
+    }
     
     if (existingUser) {
       // Update user with Google ID if not already set
@@ -305,6 +324,79 @@ export const User = {
       ...userDoc,
       password: undefined
     };
+  },
+
+  // Save password reset token
+  async saveResetToken(userId, resetToken) {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Token expires in 1 hour
+    const expiresAt = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
+    );
+
+    await db.collection(USERS_COLLECTION).doc(userId).update({
+      resetToken,
+      resetTokenExpires: expiresAt,
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+  },
+
+  // Find user by reset token
+  async findByResetToken(token) {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    const query = await db.collection(USERS_COLLECTION)
+      .where('resetToken', '==', token)
+      .limit(1)
+      .get();
+
+    if (query.empty) {
+      return null;
+    }
+
+    const doc = query.docs[0];
+    const userData = doc.data();
+
+    // Check if token has expired
+    if (userData.resetTokenExpires) {
+      const expiresAt = userData.resetTokenExpires.toDate ? 
+        userData.resetTokenExpires.toDate() : 
+        new Date(userData.resetTokenExpires);
+      
+      if (expiresAt < new Date()) {
+        // Token expired, remove it
+        const deleteData = {
+          resetToken: admin.firestore.FieldValue.delete(),
+          resetTokenExpires: admin.firestore.FieldValue.delete()
+        };
+        await db.collection(USERS_COLLECTION).doc(doc.id).update(deleteData);
+        return null;
+      }
+    }
+
+    return {
+      id: doc.id,
+      ...userData,
+      password: undefined
+    };
+  },
+
+  // Clear reset token after successful password reset
+  async clearResetToken(userId) {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+
+    await db.collection(USERS_COLLECTION).doc(userId).update({
+      resetToken: admin.firestore.FieldValue.delete(),
+      resetTokenExpires: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
   }
 };
 

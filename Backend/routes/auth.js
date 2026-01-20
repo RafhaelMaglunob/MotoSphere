@@ -1,9 +1,11 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import User, { comparePassword } from '../models/User.js';
 import { verifyToken, verifyAdmin } from '../middleware/auth.js';
 import admin from 'firebase-admin';
 import { OAuth2Client } from 'google-auth-library';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -917,15 +919,32 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
 
-    // In a production environment, you would:
-    // 1. Generate a secure reset token
-    // 2. Store it in the database with an expiration time
-    // 3. Send an email with a reset link containing the token
-    // 4. Create a reset password endpoint that validates the token
+    // Check if user has a password (OAuth users might not have one)
+    if (!user.password) {
+      return res.json({
+        success: true,
+        message: 'If an account with that email exists, password reset instructions have been sent.'
+      });
+    }
 
-    // For now, we'll just return a success message
-    // TODO: Implement email sending and token generation
-    console.log(`Password reset requested for email: ${emailValidation.email}`);
+    // Generate secure reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // Save reset token to database
+    await User.saveResetToken(user.id, resetToken);
+
+    // Create reset URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    // Send password reset email
+    try {
+      await sendPasswordResetEmail(emailValidation.email, resetToken, resetUrl);
+      console.log(`Password reset email sent to: ${emailValidation.email}`);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      // Still return success to prevent email enumeration
+    }
 
     res.json({
       success: true,
@@ -933,9 +952,81 @@ router.post('/forgot-password', async (req, res) => {
     });
   } catch (error) {
     console.error('Forgot password error:', error);
+    // Always return success to prevent email enumeration
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, password reset instructions have been sent.'
+    });
+  }
+});
+
+// Reset Password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+
+    // Validation
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset token is required'
+      });
+    }
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+
+    if (!confirmPassword || typeof confirmPassword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please confirm your password'
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match'
+      });
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: passwordValidation.message
+      });
+    }
+
+    // Find user by reset token
+    const user = await User.findByResetToken(token);
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token. Please request a new password reset.'
+      });
+    }
+
+    // Update password
+    await User.update(user.id, { password });
+
+    // Clear reset token
+    await User.clearResetToken(user.id);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now login with your new password.'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to process password reset request'
+      message: error.message || 'Failed to reset password'
     });
   }
 });
@@ -953,7 +1044,10 @@ router.post('/google', async (req, res) => {
     }
 
     // Verify Google ID token
-    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    // Create OAuth2Client without using default credentials
+    const client = new OAuth2Client({
+      clientId: process.env.GOOGLE_CLIENT_ID
+    });
     
     let ticket;
     try {
