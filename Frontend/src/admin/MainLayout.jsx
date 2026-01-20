@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet, useLocation, Navigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
 import { useNavigate } from 'react-router-dom';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from './firebase';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
@@ -11,46 +14,14 @@ import { DevicesIcon } from '../component/svg/DevicesIcon.jsx';
 import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
 
 import { Shield } from "../component/svg/Shield.jsx";
-import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
 
 function MainLayout() {
     const navigate = useNavigate();
-    const location = useLocation();
     const [showSidebar, setShowSidebar] = useState(false);
-    const [adminName, setAdminName] = useState("Admin User");
-    const [adminEmail, setAdminEmail] = useState("");
+    const [userData, setUserData] = useState(null);
+    const [loading, setLoading] = useState(true);
     
-    // Check if user is authenticated and is admin
-    const userData = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-    
-    if (!token || !userData) {
-        return <Navigate to="/admin-login" replace />;
-    }
-
-    let user;
-    try {
-        user = JSON.parse(userData);
-        if (user.role !== 'admin') {
-            // Not an admin, clear data and redirect
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            return <Navigate to="/admin-login" replace />;
-        }
-    } catch (error) {
-        console.error("Error parsing admin data:", error);
-        return <Navigate to="/admin-login" replace />;
-    }
-
-    // Load admin data from localStorage on mount
-    useEffect(() => {
-        if (user) {
-            setAdminName(user.username || "Admin User");
-            setAdminEmail(user.email || "");
-        }
-    }, [user]);
-
     const buttons = [
         {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 
         {icon: UsersIcon, name: "Users", path: "/admin/users"},
@@ -58,9 +29,60 @@ function MainLayout() {
         {icon: SettingsIcon, name: "Settings", path: "/admin/settings"}
     ]
 
-    const activeButton = buttons.find(
-        btn => location.pathname.startsWith(btn.path)
-    )?.name;
+    // Fetch current user data
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    // Try to get user document by UID first
+                    let userDoc = null;
+                    let userInfo = null;
+
+                    const userDocByUid = doc(db, 'users', user.uid);
+                    const uidDocSnap = await getDoc(userDocByUid);
+                    
+                    if (uidDocSnap.exists()) {
+                        userDoc = uidDocSnap;
+                        userInfo = uidDocSnap.data();
+                    } else {
+                        // If document doesn't exist by UID, try to find by email
+                        const usersRef = collection(db, 'users');
+                        const q = query(usersRef, where('email', '==', user.email?.toLowerCase().trim()));
+                        const querySnapshot = await getDocs(q);
+
+                        if (!querySnapshot.empty) {
+                            userDoc = querySnapshot.docs[0];
+                            userInfo = userDoc.data();
+                        }
+                    }
+
+                    if (userInfo) {
+                        setUserData(userInfo);
+                    } else {
+                        // Fallback to Firebase Auth user data
+                        setUserData({
+                            name: user.displayName || user.email?.split('@')[0] || 'Admin User',
+                            role: 'admin',
+                            email: user.email
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error fetching user data:', error);
+                    // Fallback to Firebase Auth user data
+                    if (user) {
+                        setUserData({
+                            name: user.displayName || user.email?.split('@')[0] || 'Admin User',
+                            role: 'admin',
+                            email: user.email
+                        });
+                    }
+                }
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const footer = (
         <div className="flex flex-col px-5 mt-auto">
@@ -69,18 +91,34 @@ function MainLayout() {
                 <Shield className="w-5 h-5 text-[#22D3EE]" />
                 </span>
                 <div className="flex flex-col justify-center">
-                <h1 className="text-white text-sm font-bold">{adminName}</h1>
-                <h4 className="text-[#9BB3D6] text-xs">Super Admin</h4>
+                    {loading ? (
+                        <>
+                            <h1 className="text-white text-sm font-bold">Loading...</h1>
+                            <h4 className="text-[#9BB3D6] text-xs">Please wait</h4>
+                        </>
+                    ) : (
+                        <>
+                            <h1 className="text-white text-sm font-bold">
+                                {userData?.name || 'Admin User'}
+                            </h1>
+                            <h4 className="text-[#9BB3D6] text-xs capitalize">
+                                {userData?.role || 'Admin'}
+                            </h4>
+                        </>
+                    )}
                 </div>
             </div>
 
             <div className="text-[#F87171] text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
                 <img src={Logout} alt="Logout" />
-                <h1 onClick={() => {
-                    // Clear admin data from localStorage
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
-                    navigate('/admin-login');
+                <h1 onClick={async () => {
+                    try {
+                        await signOut(auth);
+                        navigate('/admin-login');
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                        navigate('/admin-login');
+                    }
                 }}>Log Out</h1>
             </div>
         </div>
@@ -107,24 +145,8 @@ function MainLayout() {
                 {/* Topbar */}
                 <Topbar
                     onBurgerClick={() => setShowSidebar(true)}
-                    bgColor="#050816"
-                    height={60}
-                >
-                    <div className="flex flex-row justify-between w-full place-items-center">
-                        <span className="text-white font-semibold text-sm">
-                            {activeButton || "Dashboard"}
-                        </span>
-                        <div className="flex flex-row items-center gap-3">
-                            <div className="flex flex-col">
-                                <span className="text-white text-[12px] font-semibold">{adminName}</span>
-                                <span className="text-[#9BB3D6] text-[11px] font-light">Admin</span>
-                            </div>
-                            <div className="bg-[#0F2A52] p-2 rounded-3xl"> 
-                                <ProfileIconOutline className="text-[#39A9FF]" />
-                            </div>
-                        </div>
-                    </div>
-                </Topbar>
+                    isMdHidden={true}
+                />
 
                 {/* Content */}
                 <main className="flex-1 p-6 overflow-x-hidden">
