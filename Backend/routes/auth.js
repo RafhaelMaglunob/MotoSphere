@@ -283,12 +283,31 @@ router.post('/admin/login', async (req, res) => {
     }
 
     // Find admin by email or username
-    const admin = await User.findAdminForLogin(email.trim());
+    let admin;
+    try {
+      admin = await User.findAdminForLogin(email.trim());
+    } catch (error) {
+      console.error('Error finding admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking admin credentials'
+      });
+    }
 
     if (!admin) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid admin credentials'
+        message: 'Invalid admin credentials. Make sure your account has the "admin" role in Firebase.'
+      });
+    }
+
+    // Double-check role (case-insensitive)
+    const adminRole = admin.role ? admin.role.toString().trim().toLowerCase() : '';
+    if (adminRole !== 'admin') {
+      console.warn(`User ${admin.email} attempted admin login but role is "${admin.role}"`);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin credentials. Your account does not have admin privileges.'
       });
     }
 

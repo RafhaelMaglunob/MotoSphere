@@ -186,40 +186,59 @@ export const User = {
 
   // Find admin by email or username
   async findAdminForLogin(emailOrUsername) {
+    if (!db) {
+      throw new Error('Database not initialized. Please configure Firebase credentials in your .env file.');
+    }
+
     const email = emailOrUsername.toLowerCase().trim();
     const username = emailOrUsername.trim();
 
-    // Try email first
-    const emailQuery = await db.collection(USERS_COLLECTION)
-      .where('email', '==', email)
-      .where('role', '==', 'admin')
-      .limit(1)
-      .get();
+    try {
+      // Try email first
+      const emailQuery = await db.collection(USERS_COLLECTION)
+        .where('email', '==', email)
+        .limit(1)
+        .get();
 
-    if (!emailQuery.empty) {
-      const doc = emailQuery.docs[0];
-      return {
-        id: doc.id,
-        ...doc.data()
-      };
+      if (!emailQuery.empty) {
+        const doc = emailQuery.docs[0];
+        const userData = doc.data();
+        
+        // Check if role is admin (case-insensitive and trimmed)
+        const userRole = userData.role ? userData.role.toString().trim().toLowerCase() : '';
+        if (userRole === 'admin') {
+          return {
+            id: doc.id,
+            ...userData
+          };
+        }
+      }
+
+      // Try username
+      const usernameQuery = await db.collection(USERS_COLLECTION)
+        .where('username', '==', username)
+        .limit(1)
+        .get();
+
+      if (!usernameQuery.empty) {
+        const doc = usernameQuery.docs[0];
+        const userData = doc.data();
+        
+        // Check if role is admin (case-insensitive and trimmed)
+        const userRole = userData.role ? userData.role.toString().trim().toLowerCase() : '';
+        if (userRole === 'admin') {
+          return {
+            id: doc.id,
+            ...userData
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error in findAdminForLogin:', error);
+      throw error;
     }
-
-    // Try username
-    const usernameQuery = await db.collection(USERS_COLLECTION)
-      .where('username', '==', username)
-      .where('role', '==', 'admin')
-      .limit(1)
-      .get();
-
-    if (!usernameQuery.empty) {
-      const doc = usernameQuery.docs[0];
-      return {
-        id: doc.id,
-        ...doc.data()
-      };
-    }
-
-    return null;
   },
 
   // Update user
