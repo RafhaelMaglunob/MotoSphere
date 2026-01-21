@@ -23,11 +23,12 @@ function ResetPassword() {
     }, [token]);
 
     const validatePassword = (pwd) => {
-        if (!pwd || pwd.length < 8 || pwd.length > 15) {
-            return 'Password must be between 8 and 15 characters';
+        if (!pwd || pwd.length < 8) {
+            return 'Password must be at least 8 characters long';
         }
-        if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,15}$/.test(pwd)) {
-            return 'Password must include at least one uppercase letter, one number, and one special character';
+        // Strong password: uppercase, lowercase, number, special character, 8+ characters
+        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(pwd)) {
+            return 'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character';
         }
         return '';
     };

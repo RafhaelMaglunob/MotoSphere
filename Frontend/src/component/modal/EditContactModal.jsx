@@ -83,10 +83,11 @@ function EditContactModal({ data, onSave, onClose }) {
 
     const handleSave = (e) => {
         // Build contact object and call onSave (temporary, UI-only)
+        // Format: +639123456789 (no space, matches registration format)
         const contactData = {
             name: name.trim(),
             relation: relation === "Other" ? customRelation.trim() : relation,
-            contactNo: `${philippines.code} ${phone}`,
+            contactNo: `${philippines.code}${rawPhone}`,
             email: email.trim(),
         };
         if (onSave) onSave(contactData);

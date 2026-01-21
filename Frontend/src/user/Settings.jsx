@@ -1,14 +1,42 @@
 import React, { useState, useEffect } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
+import ProfilePictureUpload from '../component/ProfilePictureUpload'
+import TwoFactorSetup from '../component/TwoFactorSetup'
 
 function Settings() {
   const { email, username, setUsername, setEmail, isLight, setIsLight } = useOutletContext();
+  const navigate = useNavigate();
   const [name, setName] = useState(username || "")
   const [ userEmail, setUserEmail ] = useState(email || "")
+  const [deviceId, setDeviceId] = useState("")
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [profilePicture, setProfilePicture] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (userData.deviceId || userData.deviceID) {
+      setDeviceId(userData.deviceId || userData.deviceID || "");
+    }
+    if (userData.profilePicture) {
+      setProfilePicture(userData.profilePicture);
+    }
+    if (userData.emailVerified !== undefined) {
+      setEmailVerified(userData.emailVerified);
+    }
+    if (userData.phoneVerified !== undefined) {
+      setPhoneVerified(userData.phoneVerified);
+    }
+    if (userData.twoFactorEnabled !== undefined) {
+      setTwoFactorEnabled(userData.twoFactorEnabled);
+    }
+  }, []);
   
   const [ notificationEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem("notificationEnabled")
@@ -55,10 +83,17 @@ function Settings() {
     setLoading(true);
 
     try {
-      const response = await authAPI.updateProfile({
+      const updateData = {
         username: name.trim(),
         email: userEmail.trim()
-      });
+      };
+      
+      // Only include deviceId if it's provided
+      if (deviceId && deviceId.trim()) {
+        updateData.deviceId = deviceId.trim();
+      }
+
+      const response = await authAPI.updateProfile(updateData);
 
       if (response.success) {
         // Update parent state
@@ -69,6 +104,10 @@ function Settings() {
         const userData = JSON.parse(localStorage.getItem("user") || "{}");
         userData.username = response.user.username;
         userData.email = response.user.email;
+        if (response.user.deviceId) {
+          userData.deviceId = response.user.deviceId;
+          userData.deviceID = response.user.deviceId; // Keep both for compatibility
+        }
         localStorage.setItem("user", JSON.stringify(userData));
 
         setSuccess("Profile updated successfully!");
@@ -136,13 +175,78 @@ function Settings() {
           </div>
         </div>
         
+        {/* Profile Picture */}
+        <div className='flex flex-col mt-5 gap-2'>
+          <ProfilePictureUpload 
+            currentPicture={profilePicture}
+            onUploadSuccess={(url) => {
+              setProfilePicture(url);
+              const userData = JSON.parse(localStorage.getItem("user") || "{}");
+              userData.profilePicture = url;
+              localStorage.setItem("user", JSON.stringify(userData));
+            }}
+            isLight={isLight}
+          />
+        </div>
+
         {/* Email */}
         <div className='flex flex-col mt-5 gap-2'>
-          <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Email</label>
+          <div className="flex items-center justify-between">
+            <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Email</label>
+            {emailVerified ? (
+              <span className="text-xs text-green-500 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Verified
+              </span>
+            ) : (
+              <button
+                onClick={() => navigate('/verify-email')}
+                className="text-xs text-[#2EA8FF] hover:underline"
+              >
+                Verify Email
+              </button>
+            )}
+          </div>
           <input 
               type="text" 
               value={userEmail}
               onChange={((e) => setUserEmail(e.target.value))}
+              className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`}
+            />
+        </div>
+
+        {/* Phone Verification */}
+        <div className='flex flex-col mt-5 gap-2'>
+          <div className="flex items-center justify-between">
+            <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Phone Verification</label>
+            {phoneVerified ? (
+              <span className="text-xs text-green-500 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Verified
+              </span>
+            ) : (
+              <button
+                onClick={() => navigate('/verify-phone')}
+                className="text-xs text-[#2EA8FF] hover:underline"
+              >
+                Verify Phone
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Device ID */}
+        <div className='flex flex-col mt-5 gap-2'>
+          <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Device ID</label>
+          <input 
+              type="text" 
+              value={deviceId}
+              onChange={((e) => setDeviceId(e.target.value))}
+              placeholder="Enter your device ID"
               className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`}
             />
         </div>
@@ -195,6 +299,27 @@ function Settings() {
               ></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Security Settings */}
+      <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} p-7 mt-8 rounded-xl md:w-[70%]`}>
+        <h1 className={`${isLight ? "text-black" : "text-white"} text-lg font-semibold mb-4`}>Security Settings</h1>
+        
+        <div className="mb-6">
+          <TwoFactorSetup
+            isLight={isLight}
+            isEnabled={twoFactorEnabled}
+            onToggle={(enabled, backupCodes) => {
+              setTwoFactorEnabled(enabled);
+              const userData = JSON.parse(localStorage.getItem("user") || "{}");
+              userData.twoFactorEnabled = enabled;
+              if (backupCodes && backupCodes.length > 0) {
+                userData.twoFactorBackupCodes = backupCodes;
+              }
+              localStorage.setItem("user", JSON.stringify(userData));
+            }}
+          />
         </div>
       </div>
     </div>

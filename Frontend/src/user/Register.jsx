@@ -11,6 +11,8 @@ export default function Register() {
     username: "",
     email: "",
     contactNo: "",
+    contactNoDigits: "", // Only the 9 digits after +63
+    address: "",
     password: "",
     confirmPassword: "",
   });
@@ -18,6 +20,7 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setChecked] = useState(false); // checkbox state
+  const [termsAccepted, setTermsAccepted] = useState(false); // Terms & Conditions checkbox
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -41,15 +44,24 @@ export default function Register() {
             "Email must be letters, digits, underscore and end with gmail.com, yahoo.com, or hotmail.com";
         break;
 
-      case "contactNo":
-        if (!/^09\d{9}$/.test(value))
-          error = "Contact number must start with 09 and be 11 digits";
+      case "contactNoDigits":
+        // Only validate the 9 digits after +63
+        if (!/^\d{9,10}$/.test(value.trim()))
+          error = "Please enter 9-10 digits (e.g., 9123456789)";
+        break;
+
+      case "address":
+        if (!value || value.trim().length === 0)
+          error = "Address is required";
+        else if (value.trim().length < 10)
+          error = "Address must be at least 10 characters";
         break;
 
       case "password":
-        if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,15}$/.test(value))
+        // Strong password: uppercase, lowercase, number, special character, 8+ characters
+        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(value))
           error =
-            "Password must be 8–15 chars, include uppercase, number, and symbol";
+            "Password must be 8+ chars with uppercase, lowercase, number, and special character";
         // Also validate confirmPassword live
         if (form.confirmPassword && value !== form.confirmPassword) {
           setErrors((prev) => ({
@@ -69,7 +81,9 @@ export default function Register() {
         error = "";
     }
 
-    setErrors((prev) => ({ ...prev, [name]: error }));
+    // Map contactNoDigits error back to contactNoDigits in errors state
+    const errorKey = name === "contactNoDigits" ? "contactNoDigits" : name;
+    setErrors((prev) => ({ ...prev, [errorKey]: error }));
   };
 
   // Load Google Identity Services script
@@ -149,8 +163,12 @@ export default function Register() {
         localStorage.setItem("token", authResponse.token);
         localStorage.setItem("user", JSON.stringify(authResponse.user));
 
-        // Redirect to user home
-        navigate("/user/home", { replace: true });
+        // Check user role and redirect accordingly
+        if (authResponse.user.role === 'admin') {
+          navigate("/admin/dashboard", { replace: true });
+        } else {
+          navigate("/user/home", { replace: true });
+        }
       } else {
         setSubmitError(authResponse.message || 'Google registration failed');
       }
@@ -174,16 +192,33 @@ export default function Register() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setForm((prev) => ({ ...prev, [name]: value }));
-    validateField(name, value);
+    // Handle contact number specially - only allow digits, limit to 10
+    if (name === "contactNoDigits") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10); // Max 10 digits
+      setForm((prev) => ({ 
+        ...prev, 
+        [name]: digitsOnly,
+        contactNo: `+63${digitsOnly}` // Automatically prepend +63
+      }));
+      validateField(name, digitsOnly);
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+      validateField(name, value);
+    }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setSubmitError("");
 
+    // Check Terms & Conditions acceptance
+    if (!termsAccepted) {
+      setSubmitError("Please accept the Terms & Conditions and Privacy Policy");
+      return;
+    }
+
     // Final check before register
-    ["username", "email", "contactNo", "password", "confirmPassword"].forEach(
+    ["username", "email", "contactNoDigits", "address", "password", "confirmPassword"].forEach(
       (field) => validateField(field, form[field])
     );
 
@@ -199,9 +234,11 @@ export default function Register() {
       const response = await authAPI.register({
         username: form.username,
         email: form.email,
-        contactNo: form.contactNo,
+        contactNo: form.contactNo, // Already includes +63
+        address: form.address,
         password: form.password,
         confirmPassword: form.confirmPassword,
+        termsAccepted: true,
       });
 
       if (response.success) {
@@ -300,13 +337,42 @@ export default function Register() {
           />
 
           {/* Contact */}
-          <Input
-            label="Contact No."
-            name="contactNo"
-            value={form.contactNo}
-            onChange={handleChange}
-            error={errors.contactNo}
-          />
+          <div className="flex flex-col gap-1 w-full">
+            <label className="text-sm text-[#9BB3D6]">Contact No. (+63)</label>
+            <div className="flex gap-2">
+              <span className="bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg border border-transparent flex items-center">
+                +63
+              </span>
+              <input
+                type="text"
+                name="contactNoDigits"
+                value={form.contactNoDigits}
+                onChange={handleChange}
+                placeholder="9123456789"
+                maxLength={10}
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border flex-1 ${
+                  errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+                }`}
+              />
+            </div>
+            {errors.contactNoDigits && <span className="text-red-400 text-xs">{errors.contactNoDigits}</span>}
+          </div>
+
+          {/* Address */}
+          <div className="flex flex-col gap-1 w-full">
+            <label className="text-sm text-[#9BB3D6]">Address</label>
+            <textarea
+              name="address"
+              value={form.address}
+              onChange={handleChange}
+              rows="3"
+              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${
+                errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+              }`}
+              placeholder="Enter your complete address"
+            />
+            {errors.address && <span className="text-red-400 text-xs">{errors.address}</span>}
+          </div>
 
           {/* Password */}
           <Input
@@ -343,6 +409,30 @@ export default function Register() {
               Show Passwords
             </label>
           </div>
+
+          {/* Terms & Conditions */}
+          <div className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="cursor-pointer mt-1"
+            />
+            <label htmlFor="terms" className="text-[#94A3B8] text-sm cursor-pointer">
+              I accept the{" "}
+              <a href="/terms" target="_blank" className="text-[#22D3EE] hover:underline">
+                Terms & Conditions
+              </a>{" "}
+              and{" "}
+              <a href="/privacy" target="_blank" className="text-[#22D3EE] hover:underline">
+                Privacy Policy
+              </a>
+            </label>
+          </div>
+          {!termsAccepted && submitError && submitError.includes("Terms") && (
+            <span className="text-red-400 text-xs">Please accept the Terms & Conditions</span>
+          )}
 
           <button
             type="submit"

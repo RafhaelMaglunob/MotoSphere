@@ -20,12 +20,13 @@ export const validateUser = (userData) => {
     errors.push('Contact number must start with 09 and be 11 digits');
   }
 
-  if (!userData.password || userData.password.length < 8 || userData.password.length > 15) {
-    errors.push('Password must be between 8 and 15 characters');
+  if (!userData.password || userData.password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
   }
 
-  if (userData.password && !/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,15}$/.test(userData.password)) {
-    errors.push('Password must include uppercase, number, and symbol');
+  // Strong password: uppercase, lowercase, number, special character, 8+ characters
+  if (userData.password && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(userData.password)) {
+    errors.push('Password must include uppercase, lowercase, number, and special character');
   }
 
   return errors;
@@ -69,8 +70,22 @@ export const User = {
       username: userData.username.trim(),
       email: userData.email.toLowerCase().trim(),
       contactNo: userData.contactNo,
+      address: userData.address || '',
       password: hashedPassword,
       role: userData.role || 'user',
+      emailVerified: userData.emailVerified || false,
+      phoneVerified: userData.phoneVerified || false,
+      profilePicture: userData.profilePicture || null,
+      twoFactorEnabled: userData.twoFactorEnabled || false,
+      termsAccepted: userData.termsAccepted || false,
+      suspiciousActivity: userData.suspiciousActivity || false,
+      emailVerificationCode: null,
+      emailVerificationExpiry: null,
+      phoneOTPCode: null,
+      phoneOTPExpiry: null,
+      twoFactorSecret: null,
+      loginAttempts: 0,
+      lastLoginAt: null,
       createdAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now()
     };

@@ -101,10 +101,11 @@ function AddContactModal({ onAdd, onClose }) {
                     setErrors((prev) => ({ ...prev, submit: "" }));
 
                     // Create contact object and pass to parent
+                    // Format: +639123456789 (no space, matches registration format)
                     const contactData = {
                         name: name.trim(),
                         relation: relation === "Other" ? customRelation.trim() : relation,
-                        contactNo: `${philippines.code} ${phone}`,
+                        contactNo: `${philippines.code}${rawPhone}`,
                         email: email.trim(),
                     };
 

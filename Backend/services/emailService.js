@@ -139,6 +139,194 @@ export const sendPasswordResetEmail = async (email, resetToken, resetUrl) => {
   }
 };
 
+// Send alert notification email to admin
+export const sendAlertNotificationEmail = async (adminEmail, alertData) => {
+  try {
+    const transporter = createTransporter();
+
+    const { deviceId, deviceID, deviceNo, type, alertType, time_of_occurrence, time_of_occurence } = alertData;
+    const deviceIdDisplay = deviceId || deviceID || deviceNo || 'Unknown';
+    const alertTypeDisplay = type || alertType || 'Crash Detected';
+    const timeStr = time_of_occurrence || time_of_occurence 
+      ? new Date((time_of_occurrence || time_of_occurence).toDate ? (time_of_occurrence || time_of_occurence).toDate() : (time_of_occurrence || time_of_occurence)).toLocaleString()
+      : new Date().toLocaleString();
+
+    const mailOptions = {
+      from: `"MotoSphere Alert System" <${process.env.GMAIL_USER}>`,
+      to: adminEmail,
+      subject: `🚨 Alert: ${alertTypeDisplay} - Device #${deviceIdDisplay}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .container {
+              background-color: #f4f4f4;
+              padding: 30px;
+              border-radius: 10px;
+            }
+            .header {
+              background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+              color: white;
+              padding: 20px;
+              border-radius: 10px 10px 0 0;
+              text-align: center;
+            }
+            .content {
+              background-color: white;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .alert-box {
+              background-color: #FEE2E2;
+              border-left: 4px solid #EF4444;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 10px 0;
+              border-bottom: 1px solid #E5E7EB;
+            }
+            .info-label {
+              font-weight: bold;
+              color: #6B7280;
+            }
+            .info-value {
+              color: #111827;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 20px;
+              color: #666;
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🚨 Alert Notification</h1>
+            </div>
+            <div class="content">
+              <p>Hello Admin,</p>
+              <p>A new alert has been detected in the MotoSphere system:</p>
+              
+              <div class="alert-box">
+                <h2 style="margin-top: 0; color: #DC2626;">${alertTypeDisplay}</h2>
+                <div class="info-row">
+                  <span class="info-label">Device ID:</span>
+                  <span class="info-value">#${deviceIdDisplay}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Time:</span>
+                  <span class="info-value">${timeStr}</span>
+                </div>
+              </div>
+
+              <p>Please check the admin dashboard for more details and take appropriate action if necessary.</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/dashboard" 
+                   style="display: inline-block; padding: 12px 30px; background-color: #2EA8FF; color: white; text-decoration: none; border-radius: 5px;">
+                  View Dashboard
+                </a>
+              </div>
+
+              <p style="color: #6B7280; font-size: 14px;">
+                This is an automated notification from the MotoSphere Alert System.
+                You can manage your email notification preferences in the Admin Settings.
+              </p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} MotoSphere. All rights reserved.</p>
+              <p>This is an automated email, please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Alert Notification - MotoSphere
+        
+        Hello Admin,
+        
+        A new alert has been detected in the MotoSphere system:
+        
+        Alert Type: ${alertTypeDisplay}
+        Device ID: #${deviceIdDisplay}
+        Time: ${timeStr}
+        
+        Please check the admin dashboard for more details and take appropriate action if necessary.
+        
+        ${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/dashboard
+        
+        © ${new Date().getFullYear()} MotoSphere. All rights reserved.
+        This is an automated email, please do not reply.
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Alert notification email sent to:', adminEmail, info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending alert notification email:', error);
+    throw new Error('Failed to send alert notification email');
+  }
+};
+
+// Send notification emails to all admins with notifications enabled
+export const notifyAdminsAboutAlert = async (alertData) => {
+  try {
+    const admin = require('firebase-admin');
+    const db = admin.firestore();
+    
+    // Get all admin users with notifications enabled
+    const adminsSnapshot = await db.collection('users')
+      .where('role', '==', 'admin')
+      .get();
+    
+    const adminEmails = [];
+    adminsSnapshot.forEach(doc => {
+      const userData = doc.data();
+      // Check if notifications are enabled (default to true if not set)
+      if (userData.notifications !== false && userData.email) {
+        adminEmails.push(userData.email);
+      }
+    });
+    
+    // Send email to each admin
+    const results = [];
+    for (const email of adminEmails) {
+      try {
+        const result = await sendAlertNotificationEmail(email, alertData);
+        results.push({ email, success: true, ...result });
+      } catch (error) {
+        console.error(`Failed to send email to ${email}:`, error);
+        results.push({ email, success: false, error: error.message });
+      }
+    }
+    
+    return { success: true, sent: results.filter(r => r.success).length, total: adminEmails.length, results };
+  } catch (error) {
+    console.error('Error notifying admins about alert:', error);
+    throw error;
+  }
+};
+
 export default {
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendAlertNotificationEmail,
+  notifyAdminsAboutAlert
 };

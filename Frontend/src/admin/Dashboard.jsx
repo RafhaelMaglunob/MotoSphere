@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import { getRecentAlerts, getSystemActivity } from './firebaseService';
 
 // Mock SVG Icons - replace with your actual imports
 const UsersIcon = ({ className }) => <div className={className}>👥</div>;
@@ -35,6 +36,10 @@ function Dashboard() {
     const [emergencyContactsCount, setEmergencyContactsCount] = useState(0);
     const [monthlyGrowth, setMonthlyGrowth] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [recentAlerts, setRecentAlerts] = useState([]);
+    const [systemActivity, setSystemActivity] = useState([]);
+    const [loadingAlerts, setLoadingAlerts] = useState(true);
+    const [loadingActivity, setLoadingActivity] = useState(true);
 
     // Fetch users from Firebase
     useEffect(() => {
@@ -171,18 +176,109 @@ function Dashboard() {
         ? pieData.filter(item => item.value > 0)
         : [{ name: 'No Data', value: 1, color: '#6B7280' }];
 
-    const recentAlerts = [
-        {deviceNo: 8832, time_of_occurence: 22},
-        {deviceNo: 8592, time_of_occurence: 122130},
-        {deviceNo: 8640, time_of_occurence: 13132}
-    ]
-    
-    const systemActivity = [
-        {action: "registration", time: "10:42 AM"},
-        {action: "registration", time: "9:42 AM"},
-        {action: "registration", time: "8:42 AM"},
-        {action: "registration", time: "7:42 AM"}
-    ]
+    // Fetch recent alerts
+    useEffect(() => {
+        const fetchAlerts = async () => {
+            try {
+                setLoadingAlerts(true);
+                const alerts = await getRecentAlerts(5);
+                // Transform alerts to match the expected format
+                const formattedAlerts = alerts.map(alert => {
+                    const timeOfOccurrence = alert.time_of_occurrence || alert.time_of_occurence || alert.timestamp;
+                    let secondsAgo = 0;
+                    
+                    if (timeOfOccurrence) {
+                        if (timeOfOccurrence.toDate) {
+                            // Firestore Timestamp
+                            const alertTime = timeOfOccurrence.toDate();
+                            secondsAgo = Math.floor((Date.now() - alertTime.getTime()) / 1000);
+                        } else if (timeOfOccurrence.seconds) {
+                            // Firestore Timestamp object
+                            const alertTime = new Date(timeOfOccurrence.seconds * 1000);
+                            secondsAgo = Math.floor((Date.now() - alertTime.getTime()) / 1000);
+                        } else if (typeof timeOfOccurrence === 'number') {
+                            secondsAgo = timeOfOccurrence;
+                        } else if (timeOfOccurrence instanceof Date) {
+                            secondsAgo = Math.floor((Date.now() - timeOfOccurrence.getTime()) / 1000);
+                        }
+                    }
+                    
+                    return {
+                        deviceNo: alert.deviceId || alert.deviceID || alert.deviceNo || alert.device_id || 'Unknown',
+                        time_of_occurence: secondsAgo,
+                        type: alert.type || alert.alertType || 'Crash Detected',
+                        id: alert.id
+                    };
+                });
+                setRecentAlerts(formattedAlerts);
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+                setRecentAlerts([]);
+            } finally {
+                setLoadingAlerts(false);
+            }
+        };
+        
+        fetchAlerts();
+    }, []);
+
+    // Fetch system activity
+    useEffect(() => {
+        const fetchActivity = async () => {
+            try {
+                setLoadingActivity(true);
+                const activities = await getSystemActivity(5);
+                // Transform activities to match the expected format
+                const formattedActivities = activities.map(activity => {
+                    const timestamp = activity.timestamp || activity.createdAt || activity.time;
+                    let timeStr = 'Unknown';
+                    
+                    if (timestamp) {
+                        if (timestamp.toDate) {
+                            // Firestore Timestamp
+                            const activityTime = timestamp.toDate();
+                            timeStr = activityTime.toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true 
+                            });
+                        } else if (timestamp.seconds) {
+                            // Firestore Timestamp object
+                            const activityTime = new Date(timestamp.seconds * 1000);
+                            timeStr = activityTime.toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true 
+                            });
+                        } else if (timestamp instanceof Date) {
+                            timeStr = timestamp.toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true 
+                            });
+                        } else if (typeof timestamp === 'string') {
+                            timeStr = timestamp;
+                        }
+                    }
+                    
+                    return {
+                        action: activity.action || activity.type || activity.activityType || 'registration',
+                        time: timeStr,
+                        id: activity.id,
+                        description: activity.description || activity.message || ''
+                    };
+                });
+                setSystemActivity(formattedActivities);
+            } catch (error) {
+                console.error('Error fetching system activity:', error);
+                setSystemActivity([]);
+            } finally {
+                setLoadingActivity(false);
+            }
+        };
+        
+        fetchActivity();
+    }, []);
 
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
@@ -271,32 +367,46 @@ function Dashboard() {
                 <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
                     <h1 className="text-white font-semibold text-xl mb-6">Recent Alerts</h1>
 
-                    {recentAlerts.map((alert, index) => (
-                       <div key={index} className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
-                            <div className="flex flex-row gap-4">
-                                <div className="bg-[#EF4444]/20 rounded-md p-2">
-                                    <AlertIcon className="text-[#F87171]" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <h1 className="text-white text-sm">Crash Detected</h1>
-                                    <span className="text-[#9BB3D6] text-xs">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
+                    {loadingAlerts ? (
+                        <div className="text-[#9BB3D6] text-sm">Loading alerts...</div>
+                    ) : recentAlerts.length === 0 ? (
+                        <div className="text-[#9BB3D6] text-sm">No recent alerts</div>
+                    ) : (
+                        recentAlerts.map((alert, index) => (
+                            <div key={alert.id || index} className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
+                                <div className="flex flex-row gap-4">
+                                    <div className="bg-[#EF4444]/20 rounded-md p-2">
+                                        <AlertIcon className="text-[#F87171]" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h1 className="text-white text-sm">{alert.type || 'Crash Detected'}</h1>
+                                        <span className="text-[#9BB3D6] text-xs">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
+                                    </div>
                                 </div>
                             </div>
-                       </div>
-                    ))}
+                        ))
+                    )}
                 </div>
 
                 <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
                     <h1 className="text-white font-semibold text-xl mb-6">System Activity</h1>
-                    {systemActivity.map((act, index) => (
-                        <div key={index} className="mb-3 flex flex-row">
-                            <Dot className="text-[#06B6D4] text-4xl leading-none" />
-                            <div className="text-[#9BB3D6] text-sm font-light flex flex-col ml-2">
-                                <span className="text-white">New user {act.action} verified</span>
-                                <span className="text-xs">{act.time} • System Auto check</span>
+                    {loadingActivity ? (
+                        <div className="text-[#9BB3D6] text-sm">Loading activity...</div>
+                    ) : systemActivity.length === 0 ? (
+                        <div className="text-[#9BB3D6] text-sm">No recent activity</div>
+                    ) : (
+                        systemActivity.map((act, index) => (
+                            <div key={act.id || index} className="mb-3 flex flex-row">
+                                <Dot className="text-[#06B6D4] text-4xl leading-none" />
+                                <div className="text-[#9BB3D6] text-sm font-light flex flex-col ml-2">
+                                    <span className="text-white">
+                                        {act.description || `New user ${act.action} verified`}
+                                    </span>
+                                    <span className="text-xs">{act.time} • System Auto check</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </div>
         </div>

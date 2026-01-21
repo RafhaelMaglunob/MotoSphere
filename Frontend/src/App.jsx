@@ -20,6 +20,10 @@ import UserNotifications from "./user/Notifications";
 import UserRegister from "./user/Register";
 import ForgotPassword from "./user/ForgotPassword";
 import ResetPassword from "./user/ResetPassword";
+import EmailVerification from "./user/EmailVerification";
+import PhoneVerification from "./user/PhoneVerification";
+import Terms from "./user/Terms";
+import Privacy from "./user/Privacy";
 
 /* Landing Page */
 import LandingLayout from "./user/LandingLayout";
@@ -49,8 +53,13 @@ function App() {
         {/* User Login */}
         <Route path="/user-login" element={<UserLogin />} />
         <Route path="/user-register" element={<UserRegister />} />
+        <Route path="/register" element={<UserRegister />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<EmailVerification />} />
+        <Route path="/verify-phone" element={<PhoneVerification />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         {/* Landing Routes */}
         <Route element={<LandingLayout />}>

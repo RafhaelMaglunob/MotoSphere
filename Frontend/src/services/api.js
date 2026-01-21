@@ -179,6 +179,84 @@ export const authAPI = {
       body: JSON.stringify({ idToken }),
     });
   },
+
+  // Email Verification
+  sendEmailVerification: async () => {
+    return apiCall('/auth/send-email-verification', {
+      method: 'POST',
+    });
+  },
+
+  verifyEmail: async (code) => {
+    return apiCall('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  // Phone Verification
+  sendPhoneOTP: async () => {
+    return apiCall('/auth/send-phone-otp', {
+      method: 'POST',
+    });
+  },
+
+  verifyPhone: async (otp) => {
+    return apiCall('/auth/verify-phone', {
+      method: 'POST',
+      body: JSON.stringify({ otp }),
+    });
+  },
+
+  // Profile Picture Upload
+  uploadProfilePicture: async (file) => {
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/auth/upload-profile-picture`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to upload profile picture');
+    }
+
+    return response.json();
+  },
+
+  // Two-Factor Authentication
+  generate2FA: async () => {
+    return apiCall('/auth/2fa/generate', {
+      method: 'POST',
+    });
+  },
+
+  verifyEnable2FA: async (token) => {
+    return apiCall('/auth/2fa/verify-enable', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  disable2FA: async (token, password) => {
+    return apiCall('/auth/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
+
+  verify2FALogin: async (userId, token) => {
+    return apiCall('/auth/2fa/verify-login', {
+      method: 'POST',
+      body: JSON.stringify({ userId, token }),
+    });
+  },
 };
 
 export default apiCall;

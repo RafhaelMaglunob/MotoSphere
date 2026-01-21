@@ -29,7 +29,8 @@ const initializeFirebase = () => {
         
         firebaseApp = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-          databaseURL: process.env.FIREBASE_DATABASE_URL
+          databaseURL: process.env.FIREBASE_DATABASE_URL,
+          storageBucket: process.env.FIREBASE_STORAGE_BUCKET || serviceAccount.project_id + '.appspot.com'
         });
       }
       // Option 2: Use service account file path
@@ -44,7 +45,8 @@ const initializeFirebase = () => {
         
         firebaseApp = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-          databaseURL: process.env.FIREBASE_DATABASE_URL
+          databaseURL: process.env.FIREBASE_DATABASE_URL,
+          storageBucket: process.env.FIREBASE_STORAGE_BUCKET || serviceAccount.project_id + '.appspot.com'
         });
       }
       // Option 3: Use environment variables directly
@@ -55,7 +57,8 @@ const initializeFirebase = () => {
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
             privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
           }),
-          databaseURL: process.env.FIREBASE_DATABASE_URL
+          databaseURL: process.env.FIREBASE_DATABASE_URL,
+          storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_PROJECT_ID + '.appspot.com'
         });
       }
       // Option 4: Use default credentials (for Firebase emulator or GCP)
@@ -63,7 +66,8 @@ const initializeFirebase = () => {
         console.warn('⚠️  No Firebase credentials found. Attempting to use default credentials...');
         try {
           firebaseApp = admin.initializeApp({
-            projectId: process.env.FIREBASE_PROJECT_ID || 'motosphere'
+            projectId: process.env.FIREBASE_PROJECT_ID || 'motosphere',
+            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || (process.env.FIREBASE_PROJECT_ID || 'motosphere') + '.appspot.com'
           });
         } catch (defaultError) {
           console.error('❌ Could not initialize Firebase with default credentials.');
@@ -101,23 +105,25 @@ firebaseApp = initializeFirebase();
 // Get Firestore instance (with error handling)
 let db;
 let auth;
+let storage;
 try {
   if (firebaseApp) {
-    // Get Firestore and Auth - they automatically use the initialized app's credentials
+    // Get Firestore, Auth, and Storage - they automatically use the initialized app's credentials
     db = admin.firestore();
     auth = admin.auth();
+    storage = admin.storage();
     
     // Verify credentials are working by checking the app
     if (!firebaseApp.options.credential) {
       console.warn('⚠️  Firebase app initialized without explicit credentials');
     }
   } else {
-    console.warn('⚠️  Firestore and Auth instances not available - Firebase not initialized');
+    console.warn('⚠️  Firestore, Auth, and Storage instances not available - Firebase not initialized');
   }
 } catch (error) {
-  console.error('❌ Error creating Firestore/Auth instances:', error.message);
+  console.error('❌ Error creating Firestore/Auth/Storage instances:', error.message);
 }
 
-export { db, auth };
+export { db, auth, storage };
 
 export default firebaseApp;

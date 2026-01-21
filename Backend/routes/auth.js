@@ -1,13 +1,54 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import multer from 'multer';
 import User, { comparePassword } from '../models/User.js';
 import { verifyToken, verifyAdmin } from '../middleware/auth.js';
 import admin from 'firebase-admin';
 import { OAuth2Client } from 'google-auth-library';
 import { sendPasswordResetEmail } from '../services/emailService.js';
+import { 
+  generateVerificationCode, 
+  sendEmailVerificationCode,
+  generateOTP,
+  sendSMSOTP
+} from '../services/verificationService.js';
+import {
+  generate2FASecret,
+  generateQRCode,
+  verify2FAToken,
+  generateBackupCodes
+} from '../services/twoFactorService.js';
+import { storage } from '../config/firebase.js';
+import { v2 as cloudinary } from 'cloudinary';
 
 const router = express.Router();
+
+// Configure Cloudinary (optional - for free profile picture storage)
+// Get credentials from: https://cloudinary.com/users/register/free (no credit card needed!)
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+  console.log('✅ Cloudinary configured (free profile picture storage)');
+}
+
+// Configure multer for file uploads (in-memory storage for Firebase)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Generate JWT Token
 const generateToken = (userId, role) => {
@@ -37,11 +78,12 @@ const validatePassword = (password) => {
   if (!password || typeof password !== 'string') {
     return { valid: false, message: 'Password is required' };
   }
-  if (password.length < 8 || password.length > 15) {
-    return { valid: false, message: 'Password must be between 8 and 15 characters' };
+  if (password.length < 8) {
+    return { valid: false, message: 'Password must be at least 8 characters long' };
   }
-  if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,15}$/.test(password)) {
-    return { valid: false, message: 'Password must include at least one uppercase letter, one number, and one special character' };
+  // Strong password: uppercase, lowercase, number, special character, 8+ characters
+  if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) {
+    return { valid: false, message: 'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character' };
   }
   return { valid: true };
 };
@@ -64,8 +106,10 @@ const validateContactNo = (contactNo) => {
   if (!contactNo || typeof contactNo !== 'string') {
     return { valid: false, message: 'Contact number is required' };
   }
-  if (!/^09\d{9}$/.test(contactNo)) {
-    return { valid: false, message: 'Contact number must start with 09 and be 11 digits' };
+  // Accept +63 format (Philippines): +63XXXXXXXXXX (12 digits total: +63 + 9 digits)
+  // Examples: +639123456789, +639876543210
+  if (!/^\+63\d{9,10}$/.test(contactNo.trim())) {
+    return { valid: false, message: 'Contact number must start with +63 followed by 9-10 digits (Philippines format)' };
   }
   return { valid: true };
 };
@@ -73,7 +117,7 @@ const validateContactNo = (contactNo) => {
 // User Registration
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, contactNo, password, confirmPassword } = req.body;
+    const { username, email, contactNo, address, password, confirmPassword, termsAccepted } = req.body;
 
     // Validate all fields
     const usernameValidation = validateUsername(username);
@@ -97,6 +141,29 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: contactValidation.message
+      });
+    }
+
+    // Validate address
+    if (!address || typeof address !== 'string' || address.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Address is required'
+      });
+    }
+
+    if (address.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Address must be at least 10 characters'
+      });
+    }
+
+    // Check Terms & Conditions acceptance
+    if (!termsAccepted) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must accept the Terms & Conditions and Privacy Policy to register'
       });
     }
 
@@ -137,23 +204,48 @@ router.post('/register', async (req, res) => {
       username: usernameValidation.username,
       email: emailValidation.email,
       contactNo,
+      address: address.trim(),
       password,
-      role: 'user'
+      role: 'user',
+      termsAccepted: true,
+      emailVerified: false, // Email verification required
+      phoneVerified: false, // Phone verification required
+      profilePicture: null,
+      twoFactorEnabled: false,
+      suspiciousActivity: false,
+      loginAttempts: 0,
+      lastLoginAt: null
     });
+
+    // Send email verification code
+    try {
+      const code = generateVerificationCode();
+      const expiry = new Date(Date.now() + 15 * 60 * 1000);
+      await admin.firestore().collection('users').doc(user.id).update({
+        emailVerificationCode: code,
+        emailVerificationExpiry: admin.firestore.Timestamp.fromDate(expiry)
+      });
+      await sendEmailVerificationCode(emailValidation.email, code);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+    }
 
     // Generate token
     const token = generateToken(user.id, user.role);
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully. Please verify your email.',
       token,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
-      }
+        role: user.role,
+        emailVerified: false,
+        phoneVerified: false
+      },
+      requiresEmailVerification: true
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -226,9 +318,66 @@ router.post('/login', async (req, res) => {
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
+      // Track failed login attempt
+      const loginAttempts = (user.loginAttempts || 0) + 1;
+      const suspiciousActivity = loginAttempts >= 5;
+      
+      await admin.firestore().collection('users').doc(user.id).update({
+        loginAttempts: loginAttempts,
+        suspiciousActivity: suspiciousActivity,
+        updatedAt: admin.firestore.Timestamp.now()
+      });
+
+      if (suspiciousActivity) {
+        return res.status(401).json({
+          success: false,
+          message: 'Too many failed login attempts. Account flagged for suspicious activity. Please contact support.',
+          suspiciousActivity: true
+        });
+      }
+
       return res.status(401).json({
         success: false,
         message: 'Invalid email/username or password'
+      });
+    }
+
+    // Check for suspicious activity
+    if (user.suspiciousActivity) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account flagged for suspicious activity. Please contact support.',
+        suspiciousActivity: true
+      });
+    }
+
+    // Reset login attempts on successful login
+    await admin.firestore().collection('users').doc(user.id).update({
+      loginAttempts: 0,
+      lastLoginAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      // Return a token that requires 2FA verification
+      const tempToken = jwt.sign(
+        { userId: user.id, role: user.role, requires2FA: true },
+        process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+        { expiresIn: '5m' } // Short expiry for 2FA step
+      );
+
+      return res.json({
+        success: true,
+        message: '2FA verification required',
+        tempToken,
+        requires2FA: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
       });
     }
 
@@ -243,7 +392,10 @@ router.post('/login', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        emailVerified: user.emailVerified || false,
+        phoneVerified: user.phoneVerified || false,
+        twoFactorEnabled: user.twoFactorEnabled || false
       }
     });
   } catch (error) {
@@ -513,6 +665,11 @@ router.put('/profile', verifyToken, async (req, res) => {
     if (email !== undefined) {
       updateData.email = email.toLowerCase().trim();
     }
+    if (req.body.deviceId !== undefined || req.body.deviceID !== undefined) {
+      // Support both deviceId and deviceID for consistency
+      updateData.deviceId = (req.body.deviceId || req.body.deviceID || '').trim();
+      updateData.deviceID = updateData.deviceId; // Store both formats for compatibility
+    }
 
     // Update user
     const updatedUser = await User.update(userId, updateData);
@@ -524,7 +681,8 @@ router.put('/profile', verifyToken, async (req, res) => {
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
-        role: updatedUser.role
+        role: updatedUser.role,
+        deviceId: updatedUser.deviceId || updatedUser.deviceID || null
       }
     });
   } catch (error) {
@@ -1129,6 +1287,772 @@ router.post('/google', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Google authentication failed'
+    });
+  }
+});
+
+// ===================== EMAIL VERIFICATION =====================
+
+// Send email verification code
+router.post('/send-email-verification', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already verified'
+      });
+    }
+
+    // Generate verification code
+    const code = generateVerificationCode();
+    const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Save code to user
+    await admin.firestore().collection('users').doc(userId).update({
+      emailVerificationCode: code,
+      emailVerificationExpiry: admin.firestore.Timestamp.fromDate(expiry),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    // Send email
+    try {
+      await sendEmailVerificationCode(user.email, code);
+      res.json({
+        success: true,
+        message: 'Verification code sent to your email'
+      });
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email. Code saved: ' + code + ' (for development)'
+      });
+    }
+  } catch (error) {
+    console.error('Send email verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send verification code'
+    });
+  }
+});
+
+// Verify email code
+router.post('/verify-email', verifyToken, async (req, res) => {
+  try {
+    const { code } = req.body;
+    const userId = req.user.id;
+
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code is required'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already verified'
+      });
+    }
+
+    // Check code
+    if (!user.emailVerificationCode || user.emailVerificationCode !== code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code'
+      });
+    }
+
+    // Check expiry
+    if (user.emailVerificationExpiry) {
+      const expiryDate = user.emailVerificationExpiry.toDate ? 
+        user.emailVerificationExpiry.toDate() : 
+        new Date(user.emailVerificationExpiry);
+      
+      if (expiryDate < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Verification code has expired'
+        });
+      }
+    }
+
+    // Verify email
+    await admin.firestore().collection('users').doc(userId).update({
+      emailVerified: true,
+      emailVerificationCode: admin.firestore.FieldValue.delete(),
+      emailVerificationExpiry: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully'
+    });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to verify email'
+    });
+  }
+});
+
+// ===================== PHONE VERIFICATION =====================
+
+// Send phone OTP
+router.post('/send-phone-otp', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.contactNo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number not found'
+      });
+    }
+
+    if (user.phoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone is already verified'
+      });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save OTP to user
+    await admin.firestore().collection('users').doc(userId).update({
+      phoneOTPCode: otp,
+      phoneOTPExpiry: admin.firestore.Timestamp.fromDate(expiry),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    // Send SMS (or return OTP in dev mode)
+    // Ensure phone number has +63 format
+    let phoneNumber = user.contactNo.trim();
+    if (!phoneNumber.startsWith('+63')) {
+      // If starts with 09, convert to +63
+      if (phoneNumber.startsWith('09')) {
+        phoneNumber = `+63${phoneNumber.substring(1)}`;
+      } else {
+        // If doesn't start with +63 or 09, add +63
+        phoneNumber = `+63${phoneNumber.replace(/^\+63/, '')}`;
+      }
+    }
+    const result = await sendSMSOTP(phoneNumber, otp);
+
+    res.json({
+      success: true,
+      message: 'OTP sent to your phone',
+      devOtp: result.devOtp || undefined // Only in dev mode
+    });
+  } catch (error) {
+    console.error('Send phone OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send OTP'
+    });
+  }
+});
+
+// Verify phone OTP
+router.post('/verify-phone', verifyToken, async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const userId = req.user.id;
+
+    if (!otp || typeof otp !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP is required'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.phoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone is already verified'
+      });
+    }
+
+    // Check OTP
+    if (!user.phoneOTPCode || user.phoneOTPCode !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP'
+      });
+    }
+
+    // Check expiry
+    if (user.phoneOTPExpiry) {
+      const expiryDate = user.phoneOTPExpiry.toDate ? 
+        user.phoneOTPExpiry.toDate() : 
+        new Date(user.phoneOTPExpiry);
+      
+      if (expiryDate < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'OTP has expired'
+        });
+      }
+    }
+
+    // Verify phone
+    await admin.firestore().collection('users').doc(userId).update({
+      phoneVerified: true,
+      phoneOTPCode: admin.firestore.FieldValue.delete(),
+      phoneOTPExpiry: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    res.json({
+      success: true,
+      message: 'Phone verified successfully'
+    });
+  } catch (error) {
+    console.error('Verify phone error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to verify phone'
+    });
+  }
+});
+
+// ===================== PROFILE PICTURE =====================
+
+// Upload profile picture
+router.post('/upload-profile-picture', verifyToken, upload.single('profilePicture'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided'
+      });
+    }
+
+    const userId = req.user.id;
+    const file = req.file;
+    let publicUrl;
+
+    // Get current user to check for existing profile picture
+    const user = await User.findById(userId);
+    const oldProfilePicture = user?.profilePicture;
+
+    // Try Cloudinary first (free, no credit card needed)
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+      try {
+        console.log('Uploading to Cloudinary...');
+        
+        // Delete old profile picture from Cloudinary if exists
+        if (oldProfilePicture && oldProfilePicture.includes('cloudinary.com')) {
+          try {
+            // Extract public_id from Cloudinary URL
+            // URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/motosphere/profile-pictures/userId-timestamp.jpg
+            const urlParts = oldProfilePicture.split('/');
+            const publicIdIndex = urlParts.findIndex(part => part === 'upload') + 1;
+            if (publicIdIndex > 0 && urlParts[publicIdIndex + 1]) {
+              // Get everything after 'upload/' and remove version and extension
+              const publicIdWithVersion = urlParts.slice(publicIdIndex + 1).join('/');
+              const publicId = publicIdWithVersion.replace(/^v\d+\//, '').replace(/\.[^/.]+$/, '');
+              
+              await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+              console.log('✅ Deleted old profile picture from Cloudinary:', publicId);
+            }
+          } catch (deleteError) {
+            console.warn('⚠️ Could not delete old profile picture:', deleteError.message);
+            // Continue with upload even if deletion fails
+          }
+        }
+        
+        // Upload buffer to Cloudinary using upload_stream
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'motosphere/profile-pictures',
+              public_id: `${userId}-${Date.now()}`,
+              resource_type: 'image',
+              overwrite: true,
+              transformation: [
+                { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+                { quality: 'auto:good' }
+              ]
+            },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+          
+          // Write buffer to upload stream
+          uploadStream.end(file.buffer);
+        });
+        
+        publicUrl = uploadResult.secure_url;
+        console.log('✅ Image uploaded to Cloudinary:', publicUrl);
+        
+        // Update user profile picture
+        await admin.firestore().collection('users').doc(userId).update({
+          profilePicture: publicUrl,
+          updatedAt: admin.firestore.Timestamp.now()
+        });
+
+        res.json({
+          success: true,
+          message: 'Profile picture uploaded successfully',
+          profilePicture: publicUrl
+        });
+        
+        return; // Exit early, Cloudinary handled upload
+      } catch (error) {
+        console.error('Cloudinary setup error:', error);
+        // Fallback to Firebase Storage
+      }
+    }
+
+    // Fallback to Firebase Storage (if Cloudinary not configured)
+    uploadToFirebaseStorage();
+
+    async function uploadToFirebaseStorage() {
+      try {
+        // Get bucket name - try environment variable first, then default based on project
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'motospherebsit3b.firebasestorage.app';
+        
+        if (!storage) {
+          console.error('Firebase Storage not initialized and Cloudinary not configured');
+          return res.status(500).json({
+            success: false,
+            message: 'No storage configured. Please set up Cloudinary (free, no credit card) or Firebase Storage. See FREE_STORAGE_ALTERNATIVE.md for instructions.'
+          });
+        }
+        
+        let bucket;
+        try {
+          bucket = storage.bucket(bucketName);
+          await bucket.getMetadata();
+        } catch (metaError) {
+          console.log(`Trying alternative bucket format...`);
+          const altBucketName = bucketName.includes('.firebasestorage.app') 
+            ? bucketName.replace('.firebasestorage.app', '.appspot.com')
+            : bucketName.replace('.appspot.com', '.firebasestorage.app');
+          bucket = storage.bucket(altBucketName);
+          await bucket.getMetadata();
+          console.log(`Using bucket: ${altBucketName}`);
+        }
+        
+        const fileName = `profile-pictures/${userId}-${Date.now()}-${file.originalname}`;
+        const fileUpload = bucket.file(fileName);
+
+        let responseSent = false;
+
+        const stream = fileUpload.createWriteStream({
+          metadata: {
+            contentType: file.mimetype,
+            metadata: {
+              userId: userId
+            }
+          }
+        });
+
+        stream.on('error', (error) => {
+          console.error('Error uploading file to Firebase Storage:', error);
+          if (!responseSent) {
+            responseSent = true;
+            res.status(500).json({
+              success: false,
+              message: `Failed to upload profile picture: ${error.message || 'Unknown error'}`
+            });
+          }
+        });
+
+        stream.on('finish', async () => {
+          try {
+            await fileUpload.makePublic();
+            publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+            await admin.firestore().collection('users').doc(userId).update({
+              profilePicture: publicUrl,
+              updatedAt: admin.firestore.Timestamp.now()
+            });
+
+            if (!responseSent) {
+              responseSent = true;
+              res.json({
+                success: true,
+                message: 'Profile picture uploaded successfully',
+                profilePicture: publicUrl
+              });
+            }
+          } catch (error) {
+            console.error('Error updating user profile after upload:', error);
+            if (!responseSent) {
+              responseSent = true;
+              res.status(500).json({
+                success: false,
+                message: `Failed to update profile picture: ${error.message || 'Unknown error'}`
+              });
+            }
+          }
+        });
+
+        stream.end(file.buffer);
+      } catch (error) {
+        console.error('Firebase Storage upload error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: `Failed to upload profile picture: ${error.message || 'Unknown error. Please check console for details.'}`
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Upload profile picture error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: `Failed to upload profile picture: ${error.message || 'Unknown error. Please check console for details.'}`
+      });
+    }
+  }
+});
+
+// Delete profile picture
+router.delete('/profile-picture', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get current user to find profile picture URL
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const profilePictureUrl = user.profilePicture;
+
+    if (!profilePictureUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'No profile picture to delete'
+      });
+    }
+
+    // Delete from Cloudinary if it's a Cloudinary URL
+    if (profilePictureUrl.includes('cloudinary.com') && 
+        process.env.CLOUDINARY_CLOUD_NAME && 
+        process.env.CLOUDINARY_API_KEY && 
+        process.env.CLOUDINARY_API_SECRET) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const urlParts = profilePictureUrl.split('/');
+        const uploadIndex = urlParts.findIndex(part => part === 'upload');
+        if (uploadIndex >= 0 && urlParts[uploadIndex + 2]) {
+          // Get everything after 'upload/v1234567890/'
+          const publicIdWithVersion = urlParts.slice(uploadIndex + 2).join('/');
+          // Remove version prefix and file extension
+          const publicId = publicIdWithVersion.replace(/^v\d+\//, '').replace(/\.[^/.]+$/, '');
+          
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+          console.log('✅ Deleted profile picture from Cloudinary:', publicId);
+        }
+      } catch (deleteError) {
+        console.warn('⚠️ Could not delete profile picture from Cloudinary:', deleteError.message);
+        // Continue with database update even if Cloudinary deletion fails
+      }
+    }
+
+    // Remove profile picture from user document
+    await admin.firestore().collection('users').doc(userId).update({
+      profilePicture: null,
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile picture deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete profile picture error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete profile picture'
+    });
+  }
+});
+
+// ===================== TWO-FACTOR AUTHENTICATION =====================
+
+// Generate 2FA secret and QR code
+router.post('/2fa/generate', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: '2FA is already enabled'
+      });
+    }
+
+    // Generate secret
+    const secretData = generate2FASecret(user.username || user.email, user.email);
+    const qrCode = await generateQRCode(secretData.otpauth_url);
+    const backupCodes = generateBackupCodes();
+
+    // Save secret and backup codes (but don't enable yet)
+    await admin.firestore().collection('users').doc(userId).update({
+      twoFactorSecret: secretData.secret,
+      twoFactorBackupCodes: backupCodes,
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    res.json({
+      success: true,
+      secret: secretData.secret,
+      qrCode: qrCode,
+      backupCodes: backupCodes,
+      message: 'Scan the QR code with your authenticator app, then verify to enable 2FA'
+    });
+  } catch (error) {
+    console.error('Generate 2FA error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate 2FA secret'
+    });
+  }
+});
+
+// Verify and enable 2FA
+router.post('/2fa/verify-enable', verifyToken, async (req, res) => {
+  try {
+    const { token } = req.body;
+    const userId = req.user.id;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '2FA token is required'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || !user.twoFactorSecret) {
+      return res.status(400).json({
+        success: false,
+        message: '2FA secret not found. Please generate a new secret first'
+      });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: '2FA is already enabled'
+      });
+    }
+
+    // Verify token
+    const isValid = verify2FAToken(token, user.twoFactorSecret);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid 2FA token'
+      });
+    }
+
+    // Enable 2FA
+    await admin.firestore().collection('users').doc(userId).update({
+      twoFactorEnabled: true,
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    res.json({
+      success: true,
+      message: '2FA enabled successfully',
+      backupCodes: user.twoFactorBackupCodes || []
+    });
+  } catch (error) {
+    console.error('Verify enable 2FA error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to enable 2FA'
+    });
+  }
+});
+
+// Disable 2FA
+router.post('/2fa/disable', verifyToken, async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: '2FA is not enabled'
+      });
+    }
+
+    // Verify password or 2FA token
+    let verified = false;
+    if (password && user.password) {
+      verified = await comparePassword(password, user.password);
+    }
+    
+    if (!verified && token && user.twoFactorSecret) {
+      verified = verify2FAToken(token, user.twoFactorSecret);
+    }
+
+    if (!verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid password or 2FA token'
+      });
+    }
+
+    // Disable 2FA
+    await admin.firestore().collection('users').doc(userId).update({
+      twoFactorEnabled: false,
+      twoFactorSecret: admin.firestore.FieldValue.delete(),
+      twoFactorBackupCodes: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.Timestamp.now()
+    });
+
+    res.json({
+      success: true,
+      message: '2FA disabled successfully'
+    });
+  } catch (error) {
+    console.error('Disable 2FA error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to disable 2FA'
+    });
+  }
+});
+
+// Verify 2FA token during login
+router.post('/2fa/verify-login', async (req, res) => {
+  try {
+    const { userId, token } = req.body;
+
+    if (!userId || !token) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and 2FA token are required'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || !user.twoFactorEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: '2FA is not enabled for this user'
+      });
+    }
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({
+        success: false,
+        message: '2FA secret not found'
+      });
+    }
+
+    // Check backup codes first
+    if (user.twoFactorBackupCodes && user.twoFactorBackupCodes.includes(token)) {
+      // Remove used backup code
+      const updatedBackupCodes = user.twoFactorBackupCodes.filter(code => code !== token);
+      await admin.firestore().collection('users').doc(userId).update({
+        twoFactorBackupCodes: updatedBackupCodes,
+        updatedAt: admin.firestore.Timestamp.now()
+      });
+
+      res.json({
+        success: true,
+        message: '2FA verified successfully (backup code used)'
+      });
+      return;
+    }
+
+    // Verify TOTP token
+    const isValid = verify2FAToken(token, user.twoFactorSecret);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid 2FA token'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '2FA verified successfully'
+    });
+  } catch (error) {
+    console.error('Verify login 2FA error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to verify 2FA token'
     });
   }
 });
