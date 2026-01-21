@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
 function ProfilePictureUpload({ currentPicture, onUploadSuccess, isLight }) {
@@ -6,6 +6,13 @@ function ProfilePictureUpload({ currentPicture, onUploadSuccess, isLight }) {
   const [preview, setPreview] = useState(currentPicture || null);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+
+  // Update preview when currentPicture prop changes
+  useEffect(() => {
+    if (currentPicture) {
+      setPreview(currentPicture);
+    }
+  }, [currentPicture]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -44,15 +51,19 @@ function ProfilePictureUpload({ currentPicture, onUploadSuccess, isLight }) {
 
     try {
       const response = await authAPI.uploadProfilePicture(file);
+      console.log('Upload response:', response);
       if (response.success) {
+        console.log('Upload successful, profilePicture URL:', response.profilePicture);
         setPreview(response.profilePicture);
         if (onUploadSuccess) {
           onUploadSuccess(response.profilePicture);
         }
       } else {
+        console.error('Upload failed:', response.message);
         setError(response.message || 'Failed to upload profile picture');
       }
     } catch (err) {
+      console.error('Upload error:', err);
       setError(err.message || 'Failed to upload profile picture. Please try again.');
     } finally {
       setUploading(false);
@@ -65,9 +76,13 @@ function ProfilePictureUpload({ currentPicture, onUploadSuccess, isLight }) {
         {/* Profile Picture Preview */}
         <div className="relative">
           <img
-            src={preview || 'https://via.placeholder.com/100?text=No+Image'}
+            src={preview || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E'}
             alt="Profile"
             className="w-24 h-24 rounded-full object-cover border-2 border-[#2EA8FF]"
+            onError={(e) => {
+              // Fallback to a simple data URI if image fails to load
+              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
+            }}
           />
           {preview && preview !== currentPicture && (
             <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1">

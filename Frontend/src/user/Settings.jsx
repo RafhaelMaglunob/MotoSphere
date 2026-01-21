@@ -18,24 +18,58 @@ function Settings() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  // Load user data from localStorage
+  // Load user data from localStorage and refresh from server
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (userData.deviceId || userData.deviceID) {
-      setDeviceId(userData.deviceId || userData.deviceID || "");
-    }
-    if (userData.profilePicture) {
-      setProfilePicture(userData.profilePicture);
-    }
-    if (userData.emailVerified !== undefined) {
-      setEmailVerified(userData.emailVerified);
-    }
-    if (userData.phoneVerified !== undefined) {
-      setPhoneVerified(userData.phoneVerified);
-    }
-    if (userData.twoFactorEnabled !== undefined) {
-      setTwoFactorEnabled(userData.twoFactorEnabled);
-    }
+    const loadUserData = async () => {
+      // First load from localStorage for immediate display
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      if (userData.deviceId || userData.deviceID) {
+        setDeviceId(userData.deviceId || userData.deviceID || "");
+      }
+      if (userData.profilePicture) {
+        setProfilePicture(userData.profilePicture);
+      }
+      if (userData.emailVerified !== undefined) {
+        setEmailVerified(userData.emailVerified);
+      }
+      if (userData.phoneVerified !== undefined) {
+        setPhoneVerified(userData.phoneVerified);
+      }
+      if (userData.twoFactorEnabled !== undefined) {
+        setTwoFactorEnabled(userData.twoFactorEnabled);
+      }
+
+      // Then refresh from server to get latest data
+      try {
+        const response = await authAPI.getProfile();
+        if (response.success && response.user) {
+          // Update all state from server response
+          if (response.user.profilePicture) {
+            setProfilePicture(response.user.profilePicture);
+          }
+          if (response.user.emailVerified !== undefined) {
+            setEmailVerified(response.user.emailVerified);
+          }
+          if (response.user.phoneVerified !== undefined) {
+            setPhoneVerified(response.user.phoneVerified);
+          }
+          if (response.user.twoFactorEnabled !== undefined) {
+            setTwoFactorEnabled(response.user.twoFactorEnabled);
+          }
+          if (response.user.deviceId) {
+            setDeviceId(response.user.deviceId);
+          }
+          
+          // Update localStorage with fresh data
+          localStorage.setItem("user", JSON.stringify(response.user));
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        // Continue with localStorage data if fetch fails
+      }
+    };
+
+    loadUserData();
   }, []);
   
   const [ notificationEnabled, setNotificationsEnabled] = useState(() => {
@@ -179,11 +213,26 @@ function Settings() {
         <div className='flex flex-col mt-5 gap-2'>
           <ProfilePictureUpload 
             currentPicture={profilePicture}
-            onUploadSuccess={(url) => {
+            onUploadSuccess={async (url) => {
+              console.log('Profile picture uploaded, URL:', url);
               setProfilePicture(url);
               const userData = JSON.parse(localStorage.getItem("user") || "{}");
               userData.profilePicture = url;
               localStorage.setItem("user", JSON.stringify(userData));
+              
+              // Refresh profile data from server to ensure consistency
+              try {
+                const response = await authAPI.getProfile();
+                if (response.success && response.user) {
+                  if (response.user.profilePicture) {
+                    setProfilePicture(response.user.profilePicture);
+                    // Update localStorage with fresh data
+                    localStorage.setItem("user", JSON.stringify(response.user));
+                  }
+                }
+              } catch (error) {
+                console.error("Error refreshing profile after upload:", error);
+              }
             }}
             isLight={isLight}
           />

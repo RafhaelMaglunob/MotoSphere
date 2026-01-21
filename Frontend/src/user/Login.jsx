@@ -6,7 +6,6 @@ import { GoogleIcon } from '../component/svg/GoogleIcon';
 
 function Login() {
     const [showPassword, setShowPassword] = useState(false);
-    const [isChecked, setChecked] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -197,21 +196,7 @@ function Login() {
                             </div>
                         </div>
 
-                        <div className="flex flex-row mt-4 justify-between w-full">
-                            <div
-                                onClick={() => setChecked(prev => !prev)}
-                                className="flex items-center gap-3 cursor-pointer"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    readOnly
-                                    className="cursor-pointer"
-                                />
-                                <label className="text-[#94A3B8] text-xs cursor-pointer">
-                                    Remember this device
-                                </label>
-                            </div>
+                        <div className="flex flex-row mt-4 justify-end w-full">
                             <button
                                 type="button"
                                 onClick={() => navigate("/forgot-password")}

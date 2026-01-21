@@ -96,6 +96,13 @@ export const authAPI = {
     });
   },
 
+  // Get user profile
+  getProfile: async () => {
+    return apiCall('/auth/profile', {
+      method: 'GET',
+    });
+  },
+
   // Update user profile
   updateProfile: async (profileData) => {
     return apiCall('/auth/profile', {
@@ -228,6 +235,13 @@ export const authAPI = {
     }
 
     return response.json();
+  },
+
+  // Delete profile picture
+  deleteProfilePicture: async () => {
+    return await apiCall('/auth/profile-picture', {
+      method: 'DELETE',
+    });
   },
 
   // Two-Factor Authentication

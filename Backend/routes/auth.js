@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -25,14 +27,40 @@ import { v2 as cloudinary } from 'cloudinary';
 const router = express.Router();
 
 // Configure Cloudinary (optional - for free profile picture storage)
-// Get credentials from: https://cloudinary.com/users/register/free (no credit card needed!)
-if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+// Prefer CLOUDINARY_URL; if present, parse and trim to avoid hidden whitespace
+if (process.env.CLOUDINARY_URL) {
+  try {
+    // Parse: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+    const urlStr = process.env.CLOUDINARY_URL.trim().replace('cloudinary://', '');
+    const [credentials, cloud_name] = urlStr.split('@');
+    const [api_key, api_secret] = credentials.split(':');
+
+    cloudinary.config({ 
+      cloud_name: cloud_name.trim(), 
+      api_key: api_key.trim(), 
+      api_secret: api_secret.trim() 
+    });
+    console.log('✅ Cloudinary configured via CLOUDINARY_URL (free profile picture storage)');
+    console.log('   Cloud Name:', cloud_name.trim());
+    console.log('   API Key:', api_key.trim());
+    console.log('   API Secret:', api_secret.trim().substring(0, 5) + '...' + api_secret.trim().substring(api_secret.trim().length - 5));
+    console.log('   API Secret length:', api_secret.trim().length);
+  } catch (err) {
+    console.error('❌ Failed to parse CLOUDINARY_URL:', err.message);
+  }
+} else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  // Fallback to individual credentials
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME.trim(),
+    api_key: process.env.CLOUDINARY_API_KEY.trim(),
+    api_secret: process.env.CLOUDINARY_API_SECRET.trim()
   });
   console.log('✅ Cloudinary configured (free profile picture storage)');
+  console.log('   Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME.trim());
+  console.log('   API Key:', process.env.CLOUDINARY_API_KEY.trim());
+  console.log('   API Secret length:', process.env.CLOUDINARY_API_SECRET.trim().length);
+} else {
+  console.warn('⚠️  Cloudinary credentials not found in .env');
 }
 
 // Configure multer for file uploads (in-memory storage for Firebase)
@@ -376,7 +404,8 @@ router.post('/login', async (req, res) => {
           id: user.id,
           username: user.username,
           email: user.email,
-          role: user.role
+          role: user.role,
+          profilePicture: user.profilePicture || null
         }
       });
     }
@@ -393,6 +422,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        profilePicture: user.profilePicture || null,
         emailVerified: user.emailVerified || false,
         phoneVerified: user.phoneVerified || false,
         twoFactorEnabled: user.twoFactorEnabled || false
@@ -536,7 +566,8 @@ router.get('/verify', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        profilePicture: user.profilePicture || null
       }
     });
   } catch (error) {
@@ -614,6 +645,42 @@ router.get('/users', verifyAdmin, async (req, res) => {
   }
 });
 
+// Get User Profile
+router.get('/profile', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        profilePicture: user.profilePicture || null,
+        emailVerified: user.emailVerified || false,
+        phoneVerified: user.phoneVerified || false,
+        twoFactorEnabled: user.twoFactorEnabled || false,
+        deviceId: user.deviceId || user.deviceID || null
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch profile'
+    });
+  }
+});
+
 // Update User Profile
 router.put('/profile', verifyToken, async (req, res) => {
   try {
@@ -682,6 +749,10 @@ router.put('/profile', verifyToken, async (req, res) => {
         username: updatedUser.username,
         email: updatedUser.email,
         role: updatedUser.role,
+        profilePicture: updatedUser.profilePicture || null,
+        emailVerified: updatedUser.emailVerified || false,
+        phoneVerified: updatedUser.phoneVerified || false,
+        twoFactorEnabled: updatedUser.twoFactorEnabled || false,
         deviceId: updatedUser.deviceId || updatedUser.deviceID || null
       }
     });
@@ -1279,7 +1350,10 @@ router.post('/google', async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        picture: user.picture || null
+        profilePicture: user.profilePicture || user.picture || null,
+        emailVerified: user.emailVerified || false,
+        phoneVerified: user.phoneVerified || false,
+        twoFactorEnabled: user.twoFactorEnabled || false
       }
     });
   } catch (error) {
@@ -1578,76 +1652,80 @@ router.post('/upload-profile-picture', verifyToken, upload.single('profilePictur
     const oldProfilePicture = user?.profilePicture;
 
     // Try Cloudinary first (free, no credit card needed)
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    if (process.env.CLOUDINARY_URL || (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)) {
       try {
         console.log('Uploading to Cloudinary...');
-        
+
         // Delete old profile picture from Cloudinary if exists
         if (oldProfilePicture && oldProfilePicture.includes('cloudinary.com')) {
           try {
             // Extract public_id from Cloudinary URL
             // URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/motosphere/profile-pictures/userId-timestamp.jpg
             const urlParts = oldProfilePicture.split('/');
-            const publicIdIndex = urlParts.findIndex(part => part === 'upload') + 1;
-            if (publicIdIndex > 0 && urlParts[publicIdIndex + 1]) {
-              // Get everything after 'upload/' and remove version and extension
-              const publicIdWithVersion = urlParts.slice(publicIdIndex + 1).join('/');
+            const uploadIndex = urlParts.findIndex(part => part === 'upload');
+            if (uploadIndex >= 0 && urlParts[uploadIndex + 2]) {
+              const publicIdWithVersion = urlParts.slice(uploadIndex + 2).join('/');
               const publicId = publicIdWithVersion.replace(/^v\d+\//, '').replace(/\.[^/.]+$/, '');
-              
               await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
               console.log('✅ Deleted old profile picture from Cloudinary:', publicId);
             }
           } catch (deleteError) {
             console.warn('⚠️ Could not delete old profile picture:', deleteError.message);
-            // Continue with upload even if deletion fails
           }
         }
-        
-        // Upload buffer to Cloudinary using upload_stream
-        const uploadResult = await new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              folder: 'motosphere/profile-pictures',
-              public_id: `${userId}-${Date.now()}`,
-              resource_type: 'image',
-              overwrite: true,
-              transformation: [
-                { width: 500, height: 500, crop: 'fill', gravity: 'face' },
-                { quality: 'auto:good' }
-              ]
-            },
-            (error, result) => {
-              if (error) {
-                reject(error);
-              } else {
-                resolve(result);
-              }
-            }
-          );
-          
-          // Write buffer to upload stream
-          uploadStream.end(file.buffer);
+
+        // Convert buffer to base64 data URI for Cloudinary
+        const base64Image = file.buffer.toString('base64');
+        const dataUri = `data:${file.mimetype};base64,${base64Image}`;
+
+        // Upload to Cloudinary - try without signature first (use unsigned if possible)
+        // Note: For unsigned uploads, you need to create an upload preset in Cloudinary dashboard
+        // Settings > Upload > Upload presets > Add upload preset (name: motosphere_profile_pictures, signing mode: Unsigned)
+        let uploadResult;
+        try {
+          // Try unsigned upload (no signature required - needs upload preset)
+          uploadResult = await cloudinary.uploader.upload(dataUri, {
+            public_id: `motosphere/profile-pictures/${userId}-${Date.now()}`,
+            unsigned: true,
+            upload_preset: 'motosphere_profile_pictures'
+          });
+          console.log('✅ Uploaded using unsigned preset');
+        } catch (unsignedError) {
+          // Fallback to signed upload (current method)
+          console.log('⚠️  Unsigned upload failed, trying signed upload...');
+          uploadResult = await cloudinary.uploader.upload(dataUri, {
+            public_id: `motosphere/profile-pictures/${userId}-${Date.now()}`,
+            resource_type: 'image'
+          });
+        }
+
+        // Apply transformations via URL (does not affect signature)
+        publicUrl = cloudinary.url(uploadResult.public_id, {
+          transformation: [
+            { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+            { quality: 'auto:good' }
+          ],
+          secure: true
         });
-        
-        publicUrl = uploadResult.secure_url;
         console.log('✅ Image uploaded to Cloudinary:', publicUrl);
-        
+
         // Update user profile picture
         await admin.firestore().collection('users').doc(userId).update({
           profilePicture: publicUrl,
           updatedAt: admin.firestore.Timestamp.now()
         });
 
-        res.json({
+        return res.json({
           success: true,
           message: 'Profile picture uploaded successfully',
           profilePicture: publicUrl
         });
-        
-        return; // Exit early, Cloudinary handled upload
       } catch (error) {
-        console.error('Cloudinary setup error:', error);
-        // Fallback to Firebase Storage
+        console.error('Cloudinary upload error:', error);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to upload profile picture (Cloudinary): ${error.message || 'Unknown error'}`
+        });
       }
     }
 

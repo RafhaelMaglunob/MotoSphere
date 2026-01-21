@@ -62,6 +62,23 @@ function MainLayout() {
             
             setUsername(user.username || "");
             setEmail(user.email || "");
+
+            // Refresh user data from server to get latest profile picture
+            const refreshUserData = async () => {
+                try {
+                    const response = await authAPI.getProfile();
+                    if (response.success && response.user) {
+                        // Update localStorage with fresh data
+                        localStorage.setItem("user", JSON.stringify(response.user));
+                        setUsername(response.user.username || "");
+                        setEmail(response.user.email || "");
+                    }
+                } catch (error) {
+                    console.error("Error refreshing user data:", error);
+                    // Continue with cached data if refresh fails
+                }
+            };
+            refreshUserData();
         } catch (error) {
             console.error("Error parsing user data:", error);
             navigate('/user-login', { replace: true });
