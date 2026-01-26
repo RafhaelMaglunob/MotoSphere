@@ -45,9 +45,14 @@ export default function Register() {
         break;
 
       case "contactNoDigits":
-        // Only validate the 9 digits after +63
-        if (!/^\d{9,10}$/.test(value.trim()))
-          error = "Please enter 9-10 digits (e.g., 9123456789)";
+        // Validate exactly 10 digits after +63
+        if (!value || value.trim().length === 0) {
+          error = "Contact number is required";
+        } else if (!/^\d{10}$/.test(value.trim())) {
+          error = "Contact number must be exactly 10 digits (e.g., 9123456789)";
+        } else if (!value.trim().startsWith('9')) {
+          error = "Contact number must start with 9 (e.g., 9123456789)";
+        }
         break;
 
       case "address":
@@ -89,7 +94,7 @@ export default function Register() {
   // Load Google Identity Services script
   useEffect(() => {
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    
+
     if (!googleClientId) {
       console.warn('Google Client ID not configured. Google Sign-In will not work.');
       return;
@@ -172,31 +177,37 @@ export default function Register() {
       } else {
         setSubmitError(authResponse.message || 'Google registration failed');
       }
-      } catch (err) {
-        // Filter out technical Firebase errors
-        let errorMessage = err.message || 'Google authentication failed. Please try again.';
-        
-        if (errorMessage.includes('default credentials') || 
-            errorMessage.includes('cloud.google.com') ||
-            errorMessage.includes('Database not initialized')) {
-          errorMessage = "Server configuration error. Please contact the administrator.";
-        }
-        
-        setSubmitError(errorMessage);
-      } finally {
-        setGoogleLoading(false);
+    } catch (err) {
+      // Filter out technical Firebase errors
+      let errorMessage = err.message || 'Google authentication failed. Please try again.';
+
+      if (errorMessage.includes('default credentials') ||
+        errorMessage.includes('cloud.google.com') ||
+        errorMessage.includes('Database not initialized')) {
+        errorMessage = "Server configuration error. Please contact the administrator.";
       }
+
+      setSubmitError(errorMessage);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   // ================= HANDLER =================
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Handle contact number specially - only allow digits, limit to 10
+    // Handle contact number specially - only allow digits, exactly 10 digits
     if (name === "contactNoDigits") {
       const digitsOnly = value.replace(/\D/g, "").slice(0, 10); // Max 10 digits
-      setForm((prev) => ({ 
-        ...prev, 
+      
+      // If user starts typing and first digit is not 9, show error
+      if (digitsOnly.length > 0 && digitsOnly[0] !== '9') {
+        setErrors((prev) => ({ ...prev, contactNoDigits: "Contact number must start with 9" }));
+      }
+      
+      setForm((prev) => ({
+        ...prev,
         [name]: digitsOnly,
         contactNo: `+63${digitsOnly}` // Automatically prepend +63
       }));
@@ -249,20 +260,20 @@ export default function Register() {
       } else {
         setSubmitError(response.message || "Registration failed");
       }
-      } catch (err) {
-        // Filter out technical Firebase errors and show user-friendly messages
-        let errorMessage = err.message || "Registration failed. Please try again.";
-        
-        if (errorMessage.includes('default credentials') || 
-            errorMessage.includes('cloud.google.com') ||
-            errorMessage.includes('Database not initialized')) {
-          errorMessage = "Server configuration error. Please contact the administrator.";
-        }
-        
-        setSubmitError(errorMessage);
-      } finally {
-        setLoading(false);
+    } catch (err) {
+      // Filter out technical Firebase errors and show user-friendly messages
+      let errorMessage = err.message || "Registration failed. Please try again.";
+
+      if (errorMessage.includes('default credentials') ||
+        errorMessage.includes('cloud.google.com') ||
+        errorMessage.includes('Database not initialized')) {
+        errorMessage = "Server configuration error. Please contact the administrator.";
       }
+
+      setSubmitError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -350,9 +361,8 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="9123456789"
                 maxLength={10}
-                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border flex-1 ${
-                  errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
-                }`}
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border flex-1 ${errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+                  }`}
               />
             </div>
             {errors.contactNoDigits && <span className="text-red-400 text-xs">{errors.contactNoDigits}</span>}
@@ -366,9 +376,8 @@ export default function Register() {
               value={form.address}
               onChange={handleChange}
               rows="3"
-              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${
-                errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
-              }`}
+              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+                }`}
               placeholder="Enter your complete address"
             />
             {errors.address && <span className="text-red-400 text-xs">{errors.address}</span>}
@@ -452,7 +461,7 @@ export default function Register() {
 
         {/* Google Sign-In Button */}
         <div className="w-full flex flex-col items-center">
-          <div 
+          <div
             ref={googleButtonRef}
             className={`w-full ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
             style={{ minHeight: '40px' }}
@@ -490,9 +499,8 @@ function Input({ label, error, ...props }) {
       <label className="text-sm text-[#9BB3D6]">{label}</label>
       <input
         {...props}
-        className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${
-          error ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
-        }`}
+        className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${error ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+          }`}
       />
       {error && <span className="text-red-400 text-xs">{error}</span>}
     </div>

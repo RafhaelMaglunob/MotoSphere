@@ -1407,9 +1407,14 @@ router.post('/send-email-verification', verifyToken, async (req, res) => {
       });
     } catch (error) {
       console.error('Failed to send verification email:', error);
+      console.error('Error details:', error.message);
+      
+      // Return the actual error message to help with debugging
+      const errorMessage = error.message || 'Failed to send verification email';
       res.status(500).json({
         success: false,
-        message: 'Failed to send verification email. Code saved: ' + code + ' (for development)'
+        message: errorMessage + '. Code saved: ' + code + ' (for development)',
+        devCode: code // Include code in response for development
       });
     }
   } catch (error) {

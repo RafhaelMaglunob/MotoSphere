@@ -680,3 +680,4 @@ Check these guides:
 ---
 
 **You're all set! Start both servers and test all the features!** 🚀
+Failed to send verification email. Code saved: 698859 (for development)

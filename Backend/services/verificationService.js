@@ -1,17 +1,29 @@
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
 import twilio from 'twilio';
 import crypto from 'crypto';
 
-dotenv.config();
+// Note: dotenv is loaded in server.js, so we don't need to load it here
+// Environment variables should already be available via process.env
 
 // Email verification service
 const createEmailTransporter = () => {
+  // Get and trim Gmail credentials (remove any whitespace)
+  const gmailUser = process.env.GMAIL_USER?.trim();
+  const gmailPass = process.env.GMAIL_APP_PASSWORD?.trim();
+  
+  if (!gmailUser || !gmailPass) {
+    console.error('❌ Gmail credentials check failed:');
+    console.error('   GMAIL_USER:', gmailUser || 'undefined');
+    console.error('   GMAIL_APP_PASSWORD:', gmailPass ? '***' + gmailPass.slice(-4) : 'undefined');
+    console.error('   All env vars starting with GMAIL:', Object.keys(process.env).filter(k => k.startsWith('GMAIL')));
+    throw new Error('Gmail credentials not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD in .env file');
+  }
+
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD
+      user: gmailUser,
+      pass: gmailPass
     }
   });
 };
@@ -136,11 +148,24 @@ export const sendEmailVerificationCode = async (email, code) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email verification code sent:', info.messageId);
+    console.log('✅ Email verification code sent:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email verification code:', error);
-    throw new Error('Failed to send email verification code');
+    console.error('❌ Error sending email verification code:');
+    console.error('   Error message:', error.message);
+    console.error('   Error code:', error.code);
+    console.error('   Full error:', error);
+    
+    // Provide more specific error messages
+    if (error.code === 'EAUTH') {
+      throw new Error('Gmail authentication failed. Please check your GMAIL_USER and GMAIL_APP_PASSWORD in .env file');
+    } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+      throw new Error('Failed to connect to Gmail SMTP server. Please check your internet connection');
+    } else if (error.message && error.message.includes('credentials')) {
+      throw new Error('Gmail credentials not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD in .env file');
+    } else {
+      throw new Error(`Failed to send email: ${error.message || 'Unknown error'}`);
+    }
   }
 };
 

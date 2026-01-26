@@ -16,8 +16,11 @@ export const validateUser = (userData) => {
     errors.push('Invalid email format');
   }
 
-  if (!userData.contactNo || !/^09\d{9}$/.test(userData.contactNo)) {
-    errors.push('Contact number must start with 09 and be 11 digits');
+  // Validate contact number: must be +63 followed by exactly 10 digits (starting with 9)
+  if (!userData.contactNo) {
+    errors.push('Contact number is required');
+  } else if (!/^\+63[9]\d{9}$/.test(userData.contactNo)) {
+    errors.push('Contact number must be in format +63 followed by 10 digits starting with 9 (e.g., +639123456789)');
   }
 
   if (!userData.password || userData.password.length < 8) {
