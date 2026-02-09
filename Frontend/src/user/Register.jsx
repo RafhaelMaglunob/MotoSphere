@@ -312,9 +312,12 @@ export default function Register() {
       </div>
 
       {/* RIGHT */}
-      <div className="bg-[#0F1729]/90 p-3 md:p-5 flex flex-col w-full max-w-[520px] md:max-w-[640px] rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)] ring-1 ring-[#164E63]/30 mx-auto max-h-[88vh] md:max-h-[85vh] overflow-y-auto">
-        <span className="text-sm md:text-base font-bold text-white">Register</span>
-        <span className="text-[#94A3B8] text-xs md:text-sm">Create your MotoSphere account</span>
+      <div className="bg-[#0F1729]/90 p-3 md:p-5 flex flex-col w-full max-w-[520px] md:max-w-[640px] rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)] ring-1 ring-[#164E63]/30 mx-auto max-h-[88vh] md:max-h-[85vh] overflow-y-auto scrollbar-thin">
+        <span className="text-lg md:text-2xl font-extrabold text-white tracking-wide">Register</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[#9BB3D6] text-sm md:text-base">Create your MotoSphere account</span>
+          <span className="hidden md:inline-block h-[3px] w-16 bg-gradient-to-r from-[#22D3EE] to-[#0EA5B7] rounded-full"></span>
+        </div>
 
         {submitError && !submitError.includes('default credentials') && !submitError.includes('cloud.google.com') && (
           <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
