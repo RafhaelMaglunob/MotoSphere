@@ -171,13 +171,13 @@ function Login() {
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-full px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
+                                    className="bg-[#0A1A3A] text-[#CCCCCC] text-base w-full px-4 py-3 pr-11 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                                 />
                                 <span
-                                    className="absolute right-3 top-3 cursor-pointer text-[#334155]"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#334155]"
                                     onClick={() => setShowPassword(!showPassword)}
                                 >
-                                    {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+                                    <AiFillEye className={showPassword ? "text-[#22D3EE]" : ""} />
                                 </span>
                             </div>
                         </div>

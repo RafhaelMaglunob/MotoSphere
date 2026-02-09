@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "../services/api";
 import MotoSphere_logo from "../component/img/MotoSphere Logo.png";
+import { AiFillEye } from "react-icons/ai";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -18,8 +19,7 @@ export default function Register() {
   });
 
   const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setChecked] = useState(false); // checkbox state
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false); // Terms & Conditions checkbox
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -278,7 +278,7 @@ export default function Register() {
 
   return (
     <div className="h-screen overflow-hidden bg-[#0A0E27] flex items-center justify-center p-2 md:p-6">
-      <div className="w-full max-w-[920px] grid grid-cols-1 md:grid-cols-2 items-center gap-3 md:gap-5 mx-auto px-2 md:px-4">
+      <div className="w-full max-w-[1100px] grid grid-cols-1 md:grid-cols-2 items-center gap-3 md:gap-6 mx-auto px-2 md:px-6">
       {/* LEFT */}
       <div className="hidden md:flex flex-col space-y-3">
         <div className="flex items-center space-x-4 bg-[#1E293B]/50 px-6 py-1 rounded-3xl w-fit">
@@ -312,7 +312,7 @@ export default function Register() {
       </div>
 
       {/* RIGHT */}
-      <div className="bg-[#0F1729]/90 p-3 md:p-4 flex flex-col w-full max-w-[360px] md:max-w-[400px] rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)] ring-1 ring-[#164E63]/30 mx-auto max-h-[88vh] md:max-h-[85vh] overflow-y-auto">
+      <div className="bg-[#0F1729]/90 p-3 md:p-5 flex flex-col w-full max-w-[520px] md:max-w-[640px] rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)] ring-1 ring-[#164E63]/30 mx-auto max-h-[88vh] md:max-h-[85vh] overflow-y-auto">
         <span className="text-sm md:text-base font-bold text-white">Register</span>
         <span className="text-[#94A3B8] text-xs md:text-sm">Create your MotoSphere account</span>
 
@@ -352,7 +352,7 @@ export default function Register() {
           <div className="flex flex-col gap-1 w-full">
             <label className="text-xs md:text-sm text-[#9BB3D6]">Contact No. (+63)</label>
             <div className="flex gap-2">
-              <span className="bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-2 py-2 md:px-3 md:py-3 rounded-lg border border-transparent flex items-center">
+              <span className="bg-[#0A0E27]/50 text-[#CCCCCC] text-base px-3 py-3 md:px-4 md:py-3 rounded-lg border border-transparent flex items-center">
                 +63
               </span>
               <input
@@ -362,7 +362,7 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="9123456789"
                 maxLength={10}
-                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-2 py-2 md:px-3 md:py-3 rounded-lg outline-none border flex-1 ${errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base px-3 py-3 md:px-4 md:py-3 rounded-lg outline-none border flex-1 ${errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
                   }`}
               />
             </div>
@@ -377,7 +377,7 @@ export default function Register() {
               value={form.address}
               onChange={handleChange}
               rows="3"
-              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-3 py-2 md:px-4 md:py-3 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base px-4 py-3 md:px-5 md:py-4 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
                 }`}
               placeholder="Enter your complete address"
             />
@@ -388,37 +388,29 @@ export default function Register() {
           <Input
             label="Password"
             name="password"
-            type={showPassword ? "text" : "password"}
+            type="password"
             value={form.password}
             onChange={handleChange}
             error={errors.password}
+            visible={passwordVisible}
+            onToggle={() => setPasswordVisible((v) => !v)}
+            showToggle={true}
           />
 
           {/* Confirm Password */}
           <Input
             label="Confirm Password"
             name="confirmPassword"
-            type={showPassword ? "text" : "password"}
+            type="password"
             value={form.confirmPassword}
             onChange={handleChange}
             error={errors.confirmPassword}
+            visible={passwordVisible}
+            onToggle={() => setPasswordVisible((v) => !v)}
+            showToggle={false}
           />
 
-          {/* Show / Hide Password Checkbox */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isChecked}
-              onChange={(e) => {
-                setChecked(e.target.checked);
-                setShowPassword(e.target.checked);
-              }}
-              className="cursor-pointer"
-            />
-            <label className="text-[#94A3B8] text-sm cursor-pointer">
-              Show Passwords
-            </label>
-          </div>
+          
 
           {/* Terms & Conditions */}
           <div className="flex items-start gap-2">
@@ -495,15 +487,32 @@ export default function Register() {
 }
 
 // ================= REUSABLE INPUT =================
-function Input({ label, error, ...props }) {
+function Input({ label, error, type = "text", visible, onToggle, showToggle = true, ...props }) {
+  const [showInternal, setShowInternal] = useState(false);
+  const show = typeof visible === "boolean" ? visible : showInternal;
+  const isPassword = type === "password";
+  const inputType = isPassword ? (show ? "text" : "password") : type;
   return (
     <div className="flex flex-col gap-1 w-full">
       <label className="text-xs md:text-sm text-[#9BB3D6]">{label}</label>
-      <input
-        {...props}
-        className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-3 py-2 md:px-4 md:py-3 rounded-lg outline-none border ${error ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
-          }`}
-      />
+      <div className="relative w-full">
+        <input
+          {...props}
+          type={inputType}
+          className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base w-full px-4 py-3 md:px-5 md:py-3.5 pr-12 rounded-lg outline-none border ${error ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+            }`}
+        />
+        {isPassword && showToggle && (
+          <button
+            type="button"
+            onClick={() => (onToggle ? onToggle() : setShowInternal((s) => !s))}
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-[#94A3B8]"
+            aria-label="Toggle password visibility"
+          >
+            <AiFillEye className={`w-5 h-5 ${show ? "text-[#22D3EE]" : "text-[#94A3B8]"}`} />
+          </button>
+        )}
+      </div>
       {error && <span className="text-red-400 text-xs">{error}</span>}
     </div>
   );
