@@ -12,16 +12,17 @@ import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
 
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
+import ConfirmModal from "../component/modal/ConfirmModal.jsx";
 
 function formatLastSynced(minutesAgo) {
-  if (minutesAgo < 1) return "Just now";
-  if (minutesAgo < 60) return `${minutesAgo} min${minutesAgo !== 1 ? "s" : ""} ago`;
-  
-  const hours = Math.floor(minutesAgo / 60);
-  if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
-  
-  const days = Math.floor(hours / 24);
-  return `${days} day${days !== 1 ? "s" : ""} ago`;
+    if (minutesAgo < 1) return "Just now";
+    if (minutesAgo < 60) return `${minutesAgo} min${minutesAgo !== 1 ? "s" : ""} ago`;
+
+    const hours = Math.floor(minutesAgo / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+
+    const days = Math.floor(hours / 24);
+    return `${days} day${days !== 1 ? "s" : ""} ago`;
 }
 
 function MainLayout() {
@@ -44,7 +45,7 @@ function MainLayout() {
     useEffect(() => {
         const userData = localStorage.getItem("user");
         const token = localStorage.getItem("token");
-        
+
         if (!token || !userData) {
             // No token or user data, redirect to login
             navigate('/user-login', { replace: true });
@@ -53,13 +54,13 @@ function MainLayout() {
 
         try {
             const user = JSON.parse(userData);
-            
+
             // If user is admin, redirect to admin dashboard
             if (user.role === 'admin') {
                 navigate('/admin/dashboard', { replace: true });
                 return;
             }
-            
+
             setUsername(user.username || "");
             setEmail(user.email || "");
 
@@ -110,7 +111,7 @@ function MainLayout() {
     // Check if user is authenticated and not admin
     const userData = localStorage.getItem("user");
     const token = localStorage.getItem("token");
-    
+
     if (!token || !userData) {
         return <Navigate to="/user-login" replace />;
     }
@@ -130,28 +131,28 @@ function MainLayout() {
         localStorage.setItem("isLight", JSON.stringify(isLight));
     }, [isLight])
 
-    const sensors = [ 
-        {type: "Accelerometer", connection: "Active"},
-        {type: "Gyroscope", connection: "Inactive"},
-        {type: "Camera", connection: "Active"},
+    const sensors = [
+        { type: "Accelerometer", connection: "Active" },
+        { type: "Gyroscope", connection: "Inactive" },
+        { type: "Camera", connection: "Active" },
     ]
-    
+
     const buttons = [
-        {icon: DashboardIcon, name: "Home", path: "/user/home"}, 
-        {icon: UsersIcon, name: "Contact Persons", path: "/user/contact-persons"},
-        {icon: DevicesIcon, name: "Notifications", path: "/user/notifications"},
-        {icon: SettingsIcon, name: "Settings", path: "/user/settings"}
+        { icon: DashboardIcon, name: "Home", path: "/user/home" },
+        { icon: UsersIcon, name: "Contact Persons", path: "/user/contact-persons" },
+        { icon: DevicesIcon, name: "Notifications", path: "/user/notifications" },
+        { icon: SettingsIcon, name: "Settings", path: "/user/settings" }
     ]
 
     // Notifications - will be populated from API/database in the future
     const notifications = [];
-    
+
     const activeButton = buttons.find(
         btn => location.pathname.startsWith(btn.path)
     )?.name;
-    
+
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const handleLogout = () => {
-        // Clear user data from localStorage
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         navigate("/user-login")
@@ -161,35 +162,35 @@ function MainLayout() {
         <div className="flex flex-col mt-auto px-5">
             <div className={`${isLight ? "font-bold" : ""}  text-[#F87171] text-sm flex gap-3 pb-6 cursor-pointer`}>
                 <img src={Logout} alt="Logout" />
-                <h1 onClick={handleLogout}>Log Out</h1>
+                <h1 onClick={() => setShowLogoutConfirm(true)}>Log Out</h1>
             </div>
         </div>
     )
 
     return (
         <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0A1A3A]"} flex flex-row min-h-screen`}>
-            <Sidebar  
-                buttons={buttons} 
-                bgColor={isLight ? '#FFFFFF': '#050816'}
+            <Sidebar
+                buttons={buttons}
+                bgColor={isLight ? '#FFFFFF' : '#050816'}
                 showSidebar={showSidebar}
                 isLight={isLight}
-                setShowSidebar={setShowSidebar} 
+                setShowSidebar={setShowSidebar}
                 className="absolute w-auto md:flex"
                 footer={footer}
             >
                 <div className="flex flex-col items-center mb-7 p-3">
-                    <img src={MotoSphere_Logo} className="w-24 h-24 mb-2" alt="MotoSphere Logo"/>
+                    <img src={MotoSphere_Logo} className="w-24 h-24 mb-2" alt="MotoSphere Logo" />
                     <h1 className={`text-lg font-bold ${isLight ? "text-black" : "text-white"}`}>MotoSphere</h1>
                 </div>
             </Sidebar>
-            
+
             <div className="flex-1 flex flex-col min-w-0">
                 <Topbar
                     onBurgerClick={() => setShowSidebar(true)}
                     bgColor={isLight ? "#FFF" : '#050816'}
                     isLight={isLight}
                     height={60}
-                >   
+                >
                     <div className="flex flex-row justify-between w-full place-items-center">
                         <span className={`${isLight ? "text-black" : "text-white"} font-semibold text-sm`}>
                             {activeButton}
@@ -199,7 +200,7 @@ function MainLayout() {
                                 <span className={`${isLight ? "text-black" : "text-white"} text-[12px] font-semibold`}>{username}</span>
                                 <span className={`${isLight ? "text-black/70" : "text-[#9BB3D6]"} text-[11px] font-light`}>Rider</span>
                             </div>
-                            <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} p-2 rounded-3xl`}> 
+                            <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} p-2 rounded-3xl`}>
                                 <ProfileIconOutline className="text-[#39A9FF]" />
                             </div>
                         </div>
@@ -209,12 +210,12 @@ function MainLayout() {
                 {/* Dito natin inalis ang web-fade-in class para hindi magkaroon ng double animation 
                     kapag ang bata (UserHome) ay may sariling animation na */}
                 <main className="flex-1 p-6 overflow-x-hidden">
-                    <Outlet context={{ 
+                    <Outlet context={{
                         username: username,
                         setUsername: setUsername,
                         email: email,
                         setEmail: setEmail,
-                        deviceNo: deviceNo, 
+                        deviceNo: deviceNo,
                         lastSynced: formatLastSynced(lastSynced),
                         isConnected: isConnected,
                         sensors: sensors,
@@ -223,9 +224,19 @@ function MainLayout() {
                         notifications: notifications,
                         isLight,
                         setIsLight
-                     }}/>
+                    }} />
                 </main>
             </div>
+            <ConfirmModal
+                isOpen={showLogoutConfirm}
+                message="Would you like to logout?"
+                confirmLabel="Log Out"
+                onConfirm={() => {
+                    handleLogout();
+                    setShowLogoutConfirm(false);
+                }}
+                onCancel={() => setShowLogoutConfirm(false)}
+            />
         </div>
     )
 }

@@ -277,16 +277,17 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0A0E27] p-20 items-center justify-center gap-20">
+    <div className="h-screen overflow-hidden bg-[#0A0E27] flex items-center justify-center p-2 md:p-6">
+      <div className="w-full max-w-[920px] grid grid-cols-1 md:grid-cols-2 items-center gap-3 md:gap-5 mx-auto px-2 md:px-4">
       {/* LEFT */}
-      <div className="flex flex-col space-y-4">
+      <div className="hidden md:flex flex-col space-y-3">
         <div className="flex items-center space-x-4 bg-[#1E293B]/50 px-6 py-1 rounded-3xl w-fit">
           <span className="text-[#22C55E]">●</span>
           <span className="text-white">MotoSphere · Smart Helmet System</span>
         </div>
 
-        <span className="text-5xl font-bold text-white">Rider safer with</span>
-        <span className="text-5xl font-bold bg-gradient-to-r from-white to-[#94A3B8] bg-clip-text text-transparent">
+        <span className="text-lg md:text-[1.6rem] font-bold text-white">Rider safer with</span>
+        <span className="text-lg md:text-[1.6rem] font-bold bg-gradient-to-r from-white to-[#94A3B8] bg-clip-text text-transparent">
           real-time monitoring
         </span>
 
@@ -296,24 +297,24 @@ export default function Register() {
           tracking, accident detection, and emergency alerts.
         </span>
 
-        <div className="flex gap-4">
+        <div className="flex gap-2 md:gap-2">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="bg-[#0F1729]/80 px-4 py-2 border border-[#164E63]/50 rounded-xl text-[#22D3EE]"
+              className="bg-[#0F1729]/80 px-2 py-1 border border-[#164E63]/50 rounded-xl text-[#22D3EE] text-[11px]"
             >
               {feature}
             </div>
           ))}
         </div>
 
-        <img src={MotoSphere_logo} className="w-72 mt-5 self-center" />
+        <img src={MotoSphere_logo} className="w-28 md:w-44 mt-2 self-center" />
       </div>
 
       {/* RIGHT */}
-      <div className="bg-[#0F1729]/90 p-10 flex flex-col w-[420px] rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
-        <span className="text-2xl font-bold text-white">Register</span>
-        <span className="text-[#94A3B8]">Create your MotoSphere account</span>
+      <div className="bg-[#0F1729]/90 p-3 md:p-4 flex flex-col w-full max-w-[360px] md:max-w-[400px] rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)] ring-1 ring-[#164E63]/30 mx-auto max-h-[88vh] md:max-h-[85vh] overflow-y-auto">
+        <span className="text-sm md:text-base font-bold text-white">Register</span>
+        <span className="text-[#94A3B8] text-xs md:text-sm">Create your MotoSphere account</span>
 
         {submitError && !submitError.includes('default credentials') && !submitError.includes('cloud.google.com') && (
           <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
@@ -328,7 +329,7 @@ export default function Register() {
           </div>
         )}
 
-        <form onSubmit={handleRegister} className="flex flex-col gap-4 mt-8 w-full">
+        <form onSubmit={handleRegister} className="flex flex-col gap-2 mt-1.5 md:mt-4 w-full">
           {/* Username */}
           <Input
             label="Username"
@@ -349,9 +350,9 @@ export default function Register() {
 
           {/* Contact */}
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-sm text-[#9BB3D6]">Contact No. (+63)</label>
+            <label className="text-xs md:text-sm text-[#9BB3D6]">Contact No. (+63)</label>
             <div className="flex gap-2">
-              <span className="bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg border border-transparent flex items-center">
+              <span className="bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-2 py-2 md:px-3 md:py-3 rounded-lg border border-transparent flex items-center">
                 +63
               </span>
               <input
@@ -361,7 +362,7 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="9123456789"
                 maxLength={10}
-                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border flex-1 ${errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-2 py-2 md:px-3 md:py-3 rounded-lg outline-none border flex-1 ${errors.contactNoDigits ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
                   }`}
               />
             </div>
@@ -370,13 +371,13 @@ export default function Register() {
 
           {/* Address */}
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-sm text-[#9BB3D6]">Address</label>
+            <label className="text-xs md:text-sm text-[#9BB3D6]">Address</label>
             <textarea
               name="address"
               value={form.address}
               onChange={handleChange}
               rows="3"
-              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-3 py-2 md:px-4 md:py-3 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
                 }`}
               placeholder="Enter your complete address"
             />
@@ -428,7 +429,7 @@ export default function Register() {
               onChange={(e) => setTermsAccepted(e.target.checked)}
               className="cursor-pointer mt-1"
             />
-            <label htmlFor="terms" className="text-[#94A3B8] text-sm cursor-pointer">
+            <label htmlFor="terms" className="text-[#94A3B8] text-xs md:text-sm cursor-pointer">
               I accept the{" "}
               <a href="/terms" target="_blank" className="text-[#22D3EE] hover:underline">
                 Terms & Conditions
@@ -446,14 +447,14 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="bg-[#06B6D4] hover:bg-[#06B6D4]/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg w-full transition-colors"
+            className="bg-[#06B6D4] hover:bg-[#06B6D4]/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 md:py-3 rounded-lg w-full transition-colors"
           >
             {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
         {/* Divider */}
-        <div className="flex items-center w-full my-4">
+        <div className="flex items-center w-full my-3 md:my-4">
           <div className="flex-1 border-t border-[#334155]"></div>
           <span className="px-4 text-[#94A3B8] text-xs">OR</span>
           <div className="flex-1 border-t border-[#334155]"></div>
@@ -488,6 +489,7 @@ export default function Register() {
           </span>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -496,10 +498,10 @@ export default function Register() {
 function Input({ label, error, ...props }) {
   return (
     <div className="flex flex-col gap-1 w-full">
-      <label className="text-sm text-[#9BB3D6]">{label}</label>
+      <label className="text-xs md:text-sm text-[#9BB3D6]">{label}</label>
       <input
         {...props}
-        className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-4 py-3 rounded-lg outline-none border ${error ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
+        className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-sm px-3 py-2 md:px-4 md:py-3 rounded-lg outline-none border ${error ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
           }`}
       />
       {error && <span className="text-red-400 text-xs">{error}</span>}

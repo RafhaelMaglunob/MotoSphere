@@ -15,12 +15,14 @@ import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
 
 import { Shield } from "../component/svg/Shield.jsx";
 import Logout from "../component/img/Logout.png";
+import ConfirmModal from "../component/modal/ConfirmModal.jsx";
 
 function MainLayout() {
     const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     
     const buttons = [
         {icon: DashboardIcon, name: "Dashboard", path: "/admin/dashboard"}, 
@@ -176,22 +178,7 @@ function MainLayout() {
 
             <div className="text-[#F87171] text-sm flex gap-3 mt-5 pb-6 cursor-pointer">
                 <img src={Logout} alt="Logout" />
-                <h1 onClick={async () => {
-                    try {
-                        await signOut(auth);
-                        // Clear any local storage if needed
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        // Redirect to login page
-                        navigate('/user-login', { replace: true });
-                    } catch (error) {
-                        console.error('Logout error:', error);
-                        // Even if signOut fails, redirect to login
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        navigate('/user-login', { replace: true });
-                    }
-                }}>Log Out</h1>
+                <h1 onClick={() => setShowLogoutConfirm(true)}>Log Out</h1>
             </div>
         </div>
     )
@@ -224,6 +211,26 @@ function MainLayout() {
                     <Outlet />
                 </main>
             </div>
+            <ConfirmModal
+                isOpen={showLogoutConfirm}
+                message="Would you like to logout?"
+                confirmLabel="Log Out"
+                onConfirm={async () => {
+                    try {
+                        await signOut(auth);
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        navigate('/user-login', { replace: true });
+                    } catch (error) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        navigate('/user-login', { replace: true });
+                    } finally {
+                        setShowLogoutConfirm(false);
+                    }
+                }}
+                onCancel={() => setShowLogoutConfirm(false)}
+            />
         </div>
     )
 }

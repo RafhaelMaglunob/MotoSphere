@@ -135,8 +135,8 @@ function Login() {
 
     return (
         <div className="h-screen overflow-hidden bg-[url('./component/img/UserLoginCover.png')] bg-[length:100%_100%] bg-no-repeat bg-center">
-            <div className="h-screen flex justify-center items-center">
-                <div className="bg-[#0F2A52]/85 p-10 flex flex-col items-center rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
+            <div className="h-screen flex justify-center items-center px-4 md:px-6">
+                <div className="bg-[#0F2A52]/85 w-full max-w-[380px] md:max-w-[420px] p-8 md:p-10 flex flex-col items-center rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)] ring-1 ring-[#164E63]/30">
 
                     <h1 className="font-semibold text-white text-2xl mb-3">
                         Login to MotoSphere
@@ -160,7 +160,7 @@ function Login() {
                                 type="text"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
+                                className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-full px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                             />
                         </div>
 
@@ -171,7 +171,7 @@ function Login() {
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
+                                    className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-full px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                                 />
                                 <span
                                     className="absolute right-3 top-3 cursor-pointer text-[#334155]"

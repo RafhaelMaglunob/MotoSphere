@@ -6,23 +6,23 @@ export default function home() {
   return (
     <div className="flex flex-col px-10 gap-4">
       {/*  Heading animation */}
-      <motion.h1 
+      <motion.h1
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="text-white text-4xl md:text-5xl font-bold leading-[1.5]"
       >
-        Your Smart <br/> Helmet, Your <br/> Safety Sphere.
+        Your Smart <br /> Helmet, Your <br /> Safety Sphere.
       </motion.h1>
 
       {/* Subtext animation */}
-      <motion.span 
+      <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 1 }}
         className="text-[#E2E8F0] text-lg md:text-sm font-light"
       >
-        Experience the future of riding with real-time GPS tracking, accident <br/> detection, and seamless connectivity.
+        Experience the future of riding with real-time GPS tracking, accident <br /> detection, and seamless connectivity.
       </motion.span>
 
       {/* Button animation */}
