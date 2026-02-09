@@ -14,25 +14,21 @@ function Login() {
     const navigate = useNavigate();
     const googleButtonRef = useRef(null);
 
-    // Load Google Identity Services script
     useEffect(() => {
         const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        
+
         if (!googleClientId) {
             console.warn('Google Client ID not configured. Google Sign-In will not work.');
             return;
         }
 
-        // Check if script already exists
         if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
-            // Script already loaded, just initialize
             if (window.google && window.google.accounts) {
                 initializeGoogleSignIn(googleClientId);
             }
             return;
         }
 
-        // Load Google Identity Services script
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
         script.async = true;
@@ -45,7 +41,6 @@ function Login() {
         document.head.appendChild(script);
 
         return () => {
-            // Cleanup: remove script if component unmounts
             const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
             if (existingScript && !document.querySelector('body[data-google-script-loaded]')) {
                 existingScript.remove();
@@ -61,20 +56,15 @@ function Login() {
             callback: handleGoogleSignIn,
         });
 
-        // Render the button with a small delay to ensure DOM is ready
         setTimeout(() => {
             if (googleButtonRef.current && window.google.accounts.id.renderButton) {
-                try {
-                    window.google.accounts.id.renderButton(googleButtonRef.current, {
-                        type: 'standard',
-                        theme: 'outline',
-                        size: 'large',
-                        text: 'signin_with',
-                        width: '100%',
-                    });
-                } catch (error) {
-                    console.error('Error rendering Google button:', error);
-                }
+                window.google.accounts.id.renderButton(googleButtonRef.current, {
+                    type: 'standard',
+                    theme: 'outline',
+                    size: 'large',
+                    text: 'signin_with',
+                    width: '100%',
+                });
             }
         }, 100);
     };
@@ -87,11 +77,9 @@ function Login() {
             const authResponse = await authAPI.googleLogin(response.credential);
 
             if (authResponse.success) {
-                // Store token in localStorage
                 localStorage.setItem('token', authResponse.token);
                 localStorage.setItem('user', JSON.stringify(authResponse.user));
 
-                // Check user role and redirect accordingly
                 if (authResponse.user.role === 'admin') {
                     navigate("/admin/dashboard", { replace: true });
                 } else {
@@ -101,7 +89,7 @@ function Login() {
                 setError(authResponse.message || 'Google login failed');
             }
         } catch (err) {
-            setError(err.message || 'Google authentication failed. Please try again.');
+            setError(err.message || 'Google authentication failed.');
         } finally {
             setGoogleLoading(false);
         }
@@ -111,13 +99,12 @@ function Login() {
         e.preventDefault();
         setError('');
 
-        // Frontend validation
-        if (!email || email.trim().length === 0) {
+        if (!email.trim()) {
             setError('Email or username is required');
             return;
         }
 
-        if (!password || password.length === 0) {
+        if (!password) {
             setError('Password is required');
             return;
         }
@@ -128,23 +115,19 @@ function Login() {
             const response = await authAPI.login(email.trim(), password);
 
             if (response.success) {
-                // Store token in localStorage
                 localStorage.setItem('token', response.token);
                 localStorage.setItem('user', JSON.stringify(response.user));
 
-                // Check user role and redirect accordingly
                 if (response.user.role === 'admin') {
-                    // Admin users go to admin dashboard
                     navigate("/admin/dashboard", { replace: true });
                 } else {
-                    // Regular users go to user home
                     navigate("/user/home", { replace: true });
                 }
             } else {
                 setError(response.message || 'Login failed');
             }
         } catch (err) {
-            setError(err.message || 'Login failed. Please check your credentials.');
+            setError(err.message || 'Login failed.');
         } finally {
             setLoading(false);
         }
@@ -152,10 +135,17 @@ function Login() {
 
     return (
         <div className="h-screen overflow-hidden bg-[url('./component/img/UserLoginCover.png')] bg-[length:100%_100%] bg-no-repeat bg-center">
-            <div className="md:h-[100vh] h-screen flex justify-center items-center">
-                <div className="bg-[#0F2A52]/85 p-10 flex flex-col max-h-[480px] scrollbar-thin h-screen flex overflow-auto items-center rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
-                    <h1 className="font-semibold text-white text-2xl mb-3">Login to MotoSphere</h1>
-                    <h2 className="text-xs text-[#94A3B8] text-center leading-[1.5]">Access your ride logs, live tracking, and emergency <br />notifications</h2>
+            <div className="h-screen flex justify-center items-center">
+                <div className="bg-[#0F2A52]/85 p-10 flex flex-col items-center rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
+
+                    <h1 className="font-semibold text-white text-2xl mb-3">
+                        Login to MotoSphere
+                    </h1>
+
+                    <h2 className="text-xs text-[#94A3B8] text-center leading-[1.5]">
+                        Access your ride logs, live tracking, and emergency <br />
+                        notifications
+                    </h2>
 
                     {error && (
                         <div className="w-full mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
@@ -164,43 +154,39 @@ function Login() {
                     )}
 
                     <form onSubmit={handleLogin} className="w-full flex flex-col items-center">
-                        <div className="flex flex-col items-start w-full gap-2 mt-4">
+                        <div className="flex flex-col w-full gap-2 mt-4">
                             <label className="text-sm text-[#9BB3D6]">Email or Username</label>
                             <input
                                 type="text"
-                                placeholder="e.g motosphere@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-70 md:w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
-                                disabled={loading}
+                                className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                             />
                         </div>
 
-                        <div className="flex flex-col items-start w-full mt-6 gap-2">
+                        <div className="flex flex-col w-full mt-6 gap-2">
                             <label className="text-sm text-[#9BB3D6]">Password</label>
-                            <div className="relative w-full">
+                            <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    placeholder="Enter your password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-70 md:w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
-                                    disabled={loading}
+                                    className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-80 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                                 />
                                 <span
-                                    className="absolute right-3 top-2.5 cursor-pointer text-[#334155]"
+                                    className="absolute right-3 top-3 cursor-pointer text-[#334155]"
                                     onClick={() => setShowPassword(!showPassword)}
                                 >
-                                    {showPassword ? <AiFillEyeInvisible size={20} /> : <AiFillEye size={20} />}
+                                    {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
                                 </span>
                             </div>
                         </div>
 
-                        <div className="flex flex-row mt-4 justify-end w-full">
+                        <div className="flex justify-end w-full mt-4">
                             <button
                                 type="button"
                                 onClick={() => navigate("/forgot-password")}
-                                className="text-[#22D3EE] text-xs cursor-pointer hover:underline"
+                                className="text-[#22D3EE] text-xs hover:underline"
                             >
                                 Forgot Password?
                             </button>
@@ -209,42 +195,30 @@ function Login() {
                         <button
                             type="submit"
                             disabled={loading || googleLoading}
-                            className="bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-center text-white text-sm w-full py-3 rounded-xl mt-6 transition-colors"
+                            className="bg-[#2EA8FF] w-full py-3 mt-6 rounded-xl text-white text-sm hover:bg-[#2EA8FF]/80 disabled:opacity-50"
                         >
                             {loading ? 'Logging in...' : 'Login'}
                         </button>
                     </form>
 
-                    {/* Divider */}
                     <div className="flex items-center w-full my-4">
-                        <div className="flex-1 border-t border-[#334155]"></div>
+                        <div className="flex-1 border-t border-[#334155]" />
                         <span className="px-4 text-[#94A3B8] text-xs">OR</span>
-                        <div className="flex-1 border-t border-[#334155]"></div>
+                        <div className="flex-1 border-t border-[#334155]" />
                     </div>
 
-                    {/* Google Sign-In Button */}
-                    <div className="w-full flex flex-col items-center">
-                        <div 
-                            ref={googleButtonRef}
-                            className={`w-full ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
-                            style={{ minHeight: '40px' }}
-                        ></div>
-                        {googleLoading && (
-                            <div className="mt-2">
-                                <span className="text-[#22D3EE] text-sm">Signing in with Google...</span>
-                            </div>
-                        )}
-                        {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                            <p className="text-xs text-[#94A3B8] mt-2 text-center">
-                                Google Sign-In not configured
-                            </p>
-                        )}
+                    <div className="w-full" ref={googleButtonRef} />
+
+                    <div className="flex justify-between w-full mt-4 text-xs">
+                        <span className="text-[#94A3B8]">Don’t have an account yet?</span>
+                        <button
+                            onClick={() => navigate("/user-register")}
+                            className="text-[#22D3EE]"
+                        >
+                            Create an account
+                        </button>
                     </div>
 
-                    <div className="flex flex-row mt-4 justify-between w-full md:px-4">
-                        <label className="text-[#94A3B8] text-xs">Dont have an account yet?</label>
-                        <button onClick={() => navigate("/user-register")} className="text-[#22D3EE] text-xs cursor-pointer">Create an account</button>
-                    </div>
                 </div>
             </div>
         </div>
