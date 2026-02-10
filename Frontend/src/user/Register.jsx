@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { authAPI } from "../services/api";
+import { authAPI, psgcAPI } from "../services/api";
 import MotoSphere_logo from "../component/img/MotoSphere Logo.png";
 import { AiFillEye } from "react-icons/ai";
 
@@ -25,6 +25,19 @@ export default function Register() {
   const [submitError, setSubmitError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const googleButtonRef = useRef(null);
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [citiesMunicipalities, setCitiesMunicipalities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [provinceRequired, setProvinceRequired] = useState(true);
+  const [addr, setAddr] = useState({
+    region: null,
+    province: null,
+    city: null,
+    cityType: null,
+    barangay: null,
+    addressLine: "",
+  });
 
   // ================= LIVE VALIDATION =================
   const validateField = (name, value) => {
@@ -191,6 +204,119 @@ export default function Register() {
     } finally {
       setGoogleLoading(false);
     }
+  };
+
+  const toTitle = (s) => {
+    if (!s) return s;
+    return s
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/\b(Ncr)\b/i, "NCR");
+  };
+  const cityDisplay = (name) => {
+    if (!name) return name;
+    const t = toTitle(name);
+    return /\bCity\b/i.test(t) ? t : `${t} City`;
+  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await psgcAPI.getRegions();
+        const formatted = r
+          .map((x) => ({ code: x.code || x.psgc_id || x.correspondence_code, name: x.name }))
+          .filter((x) => x.code && x.name)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setRegions(formatted);
+      } catch (e) { void e; }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const parts = [
+      addr.addressLine ? addr.addressLine : "",
+      addr.barangay ? addr.barangay.name : "",
+      addr.city ? `${addr.city.name}${addr.cityType ? ` (${addr.cityType})` : ""}` : "",
+      addr.province ? addr.province.name : "",
+      addr.region ? addr.region.name : "",
+    ].filter(Boolean);
+    const composed = parts.join(", ");
+    setForm((prev) => ({ ...prev, address: composed }));
+  }, [addr]);
+
+  const handleRegionChange = async (code) => {
+    const region = regions.find((r) => r.code === code) || null;
+    setAddr((prev) => ({ ...prev, region, province: null, city: null, cityType: null, barangay: null }));
+    setProvinces([]);
+    setCitiesMunicipalities([]);
+    setBarangays([]);
+    if (!region) return;
+    try {
+      if (/national capital region/i.test(region.name) || region.code === "130000000") {
+        setProvinceRequired(true);
+        setProvinces([{ code: `synthetic:${region.code}`, name: "Metro Manila" }]);
+        setCitiesMunicipalities([]);
+        return;
+      }
+      const p = await psgcAPI.getProvincesByRegion(region.code);
+      const formatted = p
+        .map((x) => ({ code: x.code || x.psgc_id || x.correspondence_code, name: x.name }))
+        .filter((x) => x.code && x.name)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setProvinces(formatted);
+      if (formatted.length > 0) {
+        setProvinceRequired(true);
+      } else {
+        setProvinceRequired(false);
+        const cm = await psgcAPI.getCitiesMunicipalitiesByRegion(region.code);
+        setCitiesMunicipalities(cm);
+      }
+    } catch (e) { void e; }
+  };
+
+  const handleProvinceChange = async (code) => {
+    const province = provinces.find((p) => p.code === code) || null;
+    setAddr((prev) => ({ ...prev, province, city: null, cityType: null, barangay: null }));
+    setCitiesMunicipalities([]);
+    setBarangays([]);
+    if (!province) return;
+    try {
+      if (code.startsWith("synthetic:")) {
+        const cm = await psgcAPI.getCitiesMunicipalitiesByRegion(addr.region.code);
+        setCitiesMunicipalities(cm);
+      } else {
+        const cm = await psgcAPI.getCitiesMunicipalitiesByProvince(province.code);
+        setCitiesMunicipalities(cm);
+      }
+    } catch (e) { void e; }
+  };
+
+  const handleCityChange = async (code) => {
+    const city = citiesMunicipalities.find((c) => c.code === code) || null;
+    setAddr((prev) => ({ ...prev, city, cityType: city ? city.type : null, barangay: null }));
+    setBarangays([]);
+    if (!city) return;
+    try {
+      if (city.type === "City") {
+        const b = await psgcAPI.getBarangaysByCity(city.code);
+        const formatted = b
+          .map((x) => ({ code: x.code || x.psgc_id || x.correspondence_code, name: x.name }))
+          .filter((x) => x.code && x.name)
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+        setBarangays(formatted);
+      } else {
+        const b = await psgcAPI.getBarangaysByMunicipality(city.code);
+        const formatted = b
+          .map((x) => ({ code: x.code || x.psgc_id || x.correspondence_code, name: x.name }))
+          .filter((x) => x.code && x.name)
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+        setBarangays(formatted);
+      }
+    } catch (e) { void e; }
+  };
+
+  const handleBarangayChange = (code) => {
+    const brgy = barangays.find((b) => b.code === code) || null;
+    setAddr((prev) => ({ ...prev, barangay: brgy }));
   };
 
   // ================= HANDLER =================
@@ -373,17 +499,74 @@ export default function Register() {
           </div>
 
           {/* Address */}
-          <div className="flex flex-col gap-1 w-full">
+          <div className="flex flex-col gap-2 w-full">
             <label className="text-xs md:text-sm text-[#9BB3D6]">Address</label>
-            <textarea
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              rows="3"
-              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base px-4 py-3 md:px-5 md:py-4 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"
-                }`}
-              placeholder="Enter your complete address"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <select
+                value={addr.region?.code || ""}
+                onChange={(e) => handleRegionChange(e.target.value)}
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base w-full px-4 py-3 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"}`}
+              >
+                <option value="">Select Region</option>
+                {regions.map((r) => (
+                  <option key={r.code} value={r.code}>{r.name}</option>
+                ))}
+              </select>
+              {provinceRequired && (
+                <select
+                  value={addr.province?.code || ""}
+                  onChange={(e) => handleProvinceChange(e.target.value)}
+                  disabled={!addr.region}
+                  className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base w-full px-4 py-3 rounded-lg outline-none border ${!addr.region ? "opacity-50 cursor-not-allowed" : errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"}`}
+                >
+                  <option value="">Select Province</option>
+                  {addr.region && provinces.length === 0 && (
+                    <option disabled>No provinces found</option>
+                  )}
+                  {provinces.map((p) => (
+                    <option key={p.code} value={p.code}>{p.name}</option>
+                  ))}
+                </select>
+              )}
+              <select
+                value={addr.city?.code || ""}
+                onChange={(e) => handleCityChange(e.target.value)}
+                disabled={provinceRequired ? !addr.province : !addr.region}
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base w-full px-4 py-3 rounded-lg outline-none border ${(provinceRequired ? !addr.province : !addr.region) ? "opacity-50 cursor-not-allowed" : errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"}`}
+              >
+                <option value="">Select City/Municipality</option>
+                {(provinceRequired ? addr.province : addr.region) && citiesMunicipalities.length === 0 && (
+                  <option disabled>No cities/municipalities found</option>
+                )}
+                {citiesMunicipalities.map((c) => (
+                  <option key={c.code} value={c.code}>{cityDisplay(c.name)} {c.type === "City" ? "(City)" : "(Municipality)"}</option>
+                ))}
+              </select>
+              <select
+                value={addr.barangay?.code || ""}
+                onChange={(e) => handleBarangayChange(e.target.value)}
+                disabled={!addr.city}
+                className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base w-full px-4 py-3 rounded-lg outline-none border ${!addr.city ? "opacity-50 cursor-not-allowed" : errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"}`}
+              >
+                <option value="">Select Barangay</option>
+                {addr.city && barangays.length === 0 && (
+                  <option disabled>No barangays found</option>
+                )}
+                {barangays.map((b) => (
+                  <option key={b.code} value={b.code}>{toTitle(b.name)}</option>
+                ))}
+              </select>
+            </div>
+            <input
+              type="text"
+              value={addr.addressLine}
+              onChange={(e) => setAddr((prev) => ({ ...prev, addressLine: e.target.value }))}
+              placeholder="House no., Building, Street"
+              className={`bg-[#0A0E27]/50 text-[#CCCCCC] text-base w-full px-4 py-3 rounded-lg outline-none border ${errors.address ? "border-red-400" : "border-transparent focus:border-[#22D3EE]"}`}
             />
+            <div className="text-[#94A3B8] text-xs md:text-sm">
+              {form.address}
+            </div>
             {errors.address && <span className="text-red-400 text-xs">{errors.address}</span>}
           </div>
 

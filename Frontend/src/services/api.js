@@ -274,3 +274,64 @@ export const authAPI = {
 };
 
 export default apiCall;
+
+export const psgcAPI = {
+  _fetchJSON: async (url) => {
+    const key = `psgc:${url}`;
+    const cached = sessionStorage.getItem(key);
+    if (cached) {
+      try {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < 1000 * 60 * 60) return data;
+      } catch (e) { void e; }
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`PSGC error: ${res.status}`);
+    const data = await res.json();
+    sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+    return data;
+  },
+  getRegions: async () => {
+    return await psgcAPI._fetchJSON('https://psgc.cloud/api/regions');
+  },
+  getProvincesByRegion: async (regionCode) => {
+    const list = await psgcAPI._fetchJSON(`https://psgc.cloud/api/regions/${regionCode}/provinces`);
+    if (Array.isArray(list) && list.length > 0) return list;
+    const alt = await psgcAPI._fetchJSON(`https://psgc.cloud/api/provinces?region_code=${regionCode}`);
+    return alt;
+  },
+  getCitiesMunicipalitiesByProvince: async (provinceCode) => {
+    const cities = await psgcAPI._fetchJSON(`https://psgc.cloud/api/provinces/${provinceCode}/cities`);
+    const municipalities = await psgcAPI._fetchJSON(`https://psgc.cloud/api/provinces/${provinceCode}/municipalities`);
+    const altCities = Array.isArray(cities) && cities.length > 0 ? cities : await psgcAPI._fetchJSON(`https://psgc.cloud/api/cities?province_code=${provinceCode}`);
+    const altMunicipalities = Array.isArray(municipalities) && municipalities.length > 0 ? municipalities : await psgcAPI._fetchJSON(`https://psgc.cloud/api/municipalities?province_code=${provinceCode}`);
+    const merged = [
+      ...altCities.map((c) => ({ code: c.code || c.psgc_id || c.correspondence_code, name: c.name, type: 'City' })),
+      ...altMunicipalities.map((m) => ({ code: m.code || m.psgc_id || m.correspondence_code, name: m.name, type: 'Municipality' })),
+    ].filter((x) => x.code && x.name);
+    return merged.sort((a, b) => a.name.localeCompare(b.name));
+  },
+  getCitiesMunicipalitiesByRegion: async (regionCode) => {
+    const cities = await psgcAPI._fetchJSON(`https://psgc.cloud/api/regions/${regionCode}/cities`);
+    const municipalities = await psgcAPI._fetchJSON(`https://psgc.cloud/api/regions/${regionCode}/municipalities`);
+    const altCities = Array.isArray(cities) && cities.length > 0 ? cities : await psgcAPI._fetchJSON(`https://psgc.cloud/api/cities?region_code=${regionCode}`);
+    const altMunicipalities = Array.isArray(municipalities) && municipalities.length > 0 ? municipalities : await psgcAPI._fetchJSON(`https://psgc.cloud/api/municipalities?region_code=${regionCode}`);
+    const merged = [
+      ...altCities.map((c) => ({ code: c.code || c.psgc_id || c.correspondence_code, name: c.name, type: 'City' })),
+      ...altMunicipalities.map((m) => ({ code: m.code || m.psgc_id || m.correspondence_code, name: m.name, type: 'Municipality' })),
+    ].filter((x) => x.code && x.name);
+    return merged.sort((a, b) => a.name.localeCompare(b.name));
+  },
+  getBarangaysByCity: async (cityCode) => {
+    const list = await psgcAPI._fetchJSON(`https://psgc.cloud/api/cities/${cityCode}/barangays`);
+    if (Array.isArray(list) && list.length > 0) return list;
+    const alt = await psgcAPI._fetchJSON(`https://psgc.cloud/api/barangays?city_code=${cityCode}`);
+    return alt;
+  },
+  getBarangaysByMunicipality: async (municipalityCode) => {
+    const list = await psgcAPI._fetchJSON(`https://psgc.cloud/api/municipalities/${municipalityCode}/barangays`);
+    if (Array.isArray(list) && list.length > 0) return list;
+    const alt = await psgcAPI._fetchJSON(`https://psgc.cloud/api/barangays?municipality_code=${municipalityCode}`);
+    return alt;
+  },
+};
