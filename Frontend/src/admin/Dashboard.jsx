@@ -283,7 +283,7 @@ function Dashboard() {
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-[#0A1A3A] p-3 rounded-lg border border-[#1E3A5F]">
+                <div className="bg-[#0A1A3A] p-3 rounded-lg border border-gray-600">
                     <p className="text-white font-semibold">{payload[0].name}</p>
                     <p className="text-[#9BB3D6]">{payload[0].value.toLocaleString()}</p>
                 </div>
@@ -293,11 +293,12 @@ function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0A1628] p-6">
-            <h1 className="font-bold text-white text-xl mb-6">Dashboard</h1>
+        
+            <div className="bg-[#0F2A52] rounded-3xl p-8">
+                <h1 className="font-semibold text-white text-2xl mb-8">Dashboard</h1>
 
-            {/* Pie Chart Section */}
-            <div className="bg-[#0F2A52] p-8 rounded-3xl mb-10">
+                {/* Pie Chart Section */}
+                <div className="bg-[#0A1A3A] p-8 rounded-xl mb-8">
                 <h2 className="text-white font-semibold text-lg mb-6">Users Overview</h2>
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                     <div className="w-full md:w-1/2">
@@ -327,34 +328,34 @@ function Dashboard() {
                     
                     {/* Legend with stats */}
                     <div className="w-full md:w-1/2 grid grid-cols-1 gap-4">
-                        <div className="bg-[#0A1A3A] p-4 rounded-xl">
+                        <div className="bg-[#0F2A52] p-5 rounded-lg border border-gray-600">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22D3EE' }}></div>
-                                <span className="text-[#9BB3D6] text-xs">Riders</span>
+                                <span className="text-[#9BB3D6] text-sm">Riders</span>
                             </div>
-                            <h3 className="text-white font-bold text-xl">
+                            <h3 className="text-white font-semibold text-2xl">
                                 {loading ? '...' : ridersCount.toLocaleString()}
                             </h3>
                         </div>
 
-                        <div className="bg-[#0A1A3A] p-4 rounded-xl">
+                        <div className="bg-[#0F2A52] p-5 rounded-lg border border-gray-600">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#4ADE80' }}></div>
-                                <span className="text-[#9BB3D6] text-xs">Emergency Contacts</span>
+                                <span className="text-[#9BB3D6] text-sm">Emergency Contacts</span>
                             </div>
-                            <h3 className="text-white font-bold text-xl">
+                            <h3 className="text-white font-semibold text-2xl">
                                 {loading ? '...' : emergencyContactsCount.toLocaleString()}
                             </h3>
                         </div>
 
-                        <div className="bg-[#0A1A3A] p-4 rounded-xl border-2 border-[#22D3EE]/30">
+                        <div className="bg-[#0F2A52] p-5 rounded-lg border-2 border-[#22D3EE]">
                             <div className="flex items-center gap-2 mb-2">
-                                <span className="text-[#9BB3D6] text-xs font-semibold">Total Users</span>
+                                <span className="text-[#9BB3D6] text-sm font-semibold">Total Users</span>
                             </div>
-                            <h3 className="text-white font-bold text-2xl">
+                            <h3 className="text-white font-semibold text-2xl">
                                 {loading ? '...' : totalUsers.toLocaleString()}
                             </h3>
-                            <p className="text-[#4ADE80] text-xs mt-1">
+                            <p className="text-[#4ADE80] text-sm mt-2">
                                 {loading ? '...' : `+${monthlyGrowth}% this month`}
                             </p>
                         </div>
@@ -364,8 +365,8 @@ function Dashboard() {
             
             {/* Recent Alerts and System Activity */}
             <div className="grid grid-cols-1 md:grid-cols-2 justify-between gap-6">
-                <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
-                    <h1 className="text-white font-semibold text-xl mb-6">Recent Alerts</h1>
+                <div className="p-6 bg-[#0A1A3A] rounded-xl w-full">
+                    <h2 className="text-white font-semibold text-lg mb-6">Recent Alerts</h2>
 
                     {loadingAlerts ? (
                         <div className="text-[#9BB3D6] text-sm">Loading alerts...</div>
@@ -373,14 +374,14 @@ function Dashboard() {
                         <div className="text-[#9BB3D6] text-sm">No recent alerts</div>
                     ) : (
                         recentAlerts.map((alert, index) => (
-                            <div key={alert.id || index} className="mb-3 bg-[#0A1A3A] p-4 flex flex-row rounded-xl justify-between">
+                            <div key={alert.id || index} className="mb-3 bg-[#0F2A52] p-4 flex flex-row rounded-lg justify-between border border-gray-600">
                                 <div className="flex flex-row gap-4">
-                                    <div className="bg-[#EF4444]/20 rounded-md p-2">
-                                        <AlertIcon className="text-[#F87171]" />
+                                    <div className="bg-[#ef4444]/20 rounded-lg p-2 h-fit">
+                                        <AlertIcon className="text-[#f87171]" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <h1 className="text-white text-sm">{alert.type || 'Crash Detected'}</h1>
-                                        <span className="text-[#9BB3D6] text-xs">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
+                                        <h3 className="text-white text-sm font-medium">{alert.type || 'Crash Detected'}</h3>
+                                        <span className="text-[#9BB3D6] text-xs mt-1">Device #{alert.deviceNo} • {formatTimeAgo(alert.time_of_occurence)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -388,28 +389,29 @@ function Dashboard() {
                     )}
                 </div>
 
-                <div className="p-6 bg-[#0F2A52] rounded-2xl w-full">
-                    <h1 className="text-white font-semibold text-xl mb-6">System Activity</h1>
+                <div className="p-6 bg-[#0A1A3A] rounded-xl w-full">
+                    <h2 className="text-white font-semibold text-lg mb-6">System Activity</h2>
                     {loadingActivity ? (
                         <div className="text-[#9BB3D6] text-sm">Loading activity...</div>
                     ) : systemActivity.length === 0 ? (
                         <div className="text-[#9BB3D6] text-sm">No recent activity</div>
                     ) : (
                         systemActivity.map((act, index) => (
-                            <div key={act.id || index} className="mb-3 flex flex-row">
-                                <Dot className="text-[#06B6D4] text-4xl leading-none" />
-                                <div className="text-[#9BB3D6] text-sm font-light flex flex-col ml-2">
-                                    <span className="text-white">
+                            <div key={act.id || index} className="mb-4 flex flex-row">
+                                <Dot className="text-[#06b6d4] text-4xl leading-none" />
+                                <div className="text-[#9BB3D6] text-sm flex flex-col ml-2">
+                                    <span className="text-white font-medium">
                                         {act.description || `New user ${act.action} verified`}
                                     </span>
-                                    <span className="text-xs">{act.time} • System Auto check</span>
+                                    <span className="text-xs mt-1">{act.time} • System Auto check</span>
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
             </div>
-        </div>
+            </div>
+        
     )
 }
 

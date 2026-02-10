@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { logAdminChange } from './changeLogger';
 
 function Settings() {
     const [adminName, setAdminName] = useState("");
@@ -80,6 +81,20 @@ function Settings() {
                 name: adminName.trim(),
                 notifications,
                 updatedAt: new Date(),
+            });
+
+            // Log profile/settings update
+            await logAdminChange({
+                actorId: currentUid,
+                actorEmail: adminEmail,
+                actorName: adminName,
+                action: 'admin_settings_updated',
+                targetType: 'settings',
+                targetId: currentUid,
+                summary: `Admin updated their profile/settings.`,
+                metadata: {
+                    notificationsEnabled: notifications,
+                },
             });
             alert("Settings saved successfully!");
         } catch (e) {

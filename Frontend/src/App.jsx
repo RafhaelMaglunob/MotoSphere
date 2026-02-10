@@ -8,6 +8,7 @@ import AdminDashboard from "./admin/Dashboard";
 import AdminUsers from "./admin/Users";
 import AdminDevices from "./admin/Devices";
 import AdminSettings from "./admin/Settings";
+import AdminChangeLogs from "./admin/Changelogs";
 import SetupAdmin from "./admin/SetupAdmin";
 
 /* User Page */
@@ -47,6 +48,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="devices" element={<AdminDevices />} />
+          <Route path="changelogs" element={<AdminChangeLogs />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 

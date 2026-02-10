@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, updateDoc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import { auth } from './firebase';
+import { logAdminChange } from './changeLogger';
 
 function formatTimeAgo(secondsAgo) {
     if (secondsAgo < 60) return `${secondsAgo} sec${secondsAgo !== 1 ? "s" : ""} ago`;
@@ -267,6 +269,23 @@ function Users() {
     const [archivedUsers, setArchivedUsers] = useState([]);
     const [showArchive, setShowArchive] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [currentAdmin, setCurrentAdmin] = useState(null);
+
+    // Track currently logged in admin (for attribution in logs)
+    useEffect(() => {
+        const unsub = auth.onAuthStateChanged((user) => {
+            if (!user) {
+                setCurrentAdmin(null);
+                return;
+            }
+            setCurrentAdmin({
+                uid: user.uid,
+                email: user.email || "",
+                displayName: user.displayName || "",
+            });
+        });
+        return () => unsub();
+    }, []);
 
     const tableColumns = [
         { key: "name", label: "Name", minWidth: '180px' },
@@ -345,28 +364,11 @@ function Users() {
     const loadArchivedUsers = async () => {
         try {
             const snap = await getDocs(collection(db, 'archivedUsers'));
-            const now = Date.now();
-            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-            const archived = [];
-
-            // Clean up docs older than 7 days
-            for (const d of snap.docs) {
+            const archived = snap.docs.map(d => {
                 const data = { id: d.id, ...d.data() };
                 const deletedAtDate = toDateMaybe(data.deletedAt);
 
-                if (deletedAtDate && now - deletedAtDate.getTime() > sevenDaysMs) {
-                    // Permanently delete
-                    try {
-                        await deleteDoc(doc(db, 'archivedUsers', d.id));
-                        console.log('Deleted archived user older than 7 days:', d.id);
-                    } catch (err) {
-                        console.error('Failed to delete old archived user:', d.id, err);
-                    }
-                    continue;
-                }
-
-                archived.push({
+                return {
                     id: data.id,
                     name: data.name || data.username || (data.email ? data.email.split('@')[0] : 'Unknown'),
                     email: data.email || '—',
@@ -374,12 +376,11 @@ function Users() {
                     role: data.role || '',
                     lastActive: data.lastActive || '—',
                     deletedAt: deletedAtDate ? deletedAtDate.toLocaleString() : '—',
-                });
-            }
+                };
+            });
 
             setArchivedUsers(archived);
         } catch (e) {
-            // collection may not exist yet
             console.log('No archivedUsers collection yet or error:', e.message);
             setArchivedUsers([]);
         }
@@ -402,39 +403,88 @@ function Users() {
                 // role: formData.role,
                 updatedAt: Timestamp.now(),
             });
+
+            // Log change
+            if (currentAdmin) {
+                await logAdminChange({
+                    actorId: currentAdmin.uid,
+                    actorEmail: currentAdmin.email,
+                    actorName: currentAdmin.displayName,
+                    action: 'user_updated',
+                    targetType: 'user',
+                    targetId: userId,
+                    summary: `Admin updated user "${formData.name}" (${formData.email}).`,
+                    metadata: {
+                        userId,
+                        name: formData.name,
+                        email: formData.email,
+                        status: formData.status,
+                    },
+                });
+            }
             await loadUsers();
             setSelectedUser(null);
         } catch (e) {
             console.error('Failed to save user:', e);
+            alert('Failed to save user changes. Please check your internet connection and Firestore rules.');
         }
     };
 
     const handleDeleteUser = async (userId) => {
         try {
-            const user = rows.find(u => u.id === userId);
-            if (!user) return;
+            // Find the lightweight row data for logging fallback
+            const rowUser = rows.find(u => u.id === userId);
+            if (!rowUser) {
+                console.warn('User not found in current rows for delete:', userId);
+            }
 
-            // Read full user doc data
-            const userSnap = await getDocs(collection(db, 'users'));
-            const fullUser = userSnap.docs
-                .map(d => ({ id: d.id, ...d.data() }))
-                .find(u => u.id === userId);
+            // Read full user document data directly by ID
+            const userRef = doc(db, 'users', userId);
+            const snap = await getDoc(userRef);
+
+            if (!snap.exists()) {
+                console.warn('User document does not exist in Firestore for delete:', userId);
+                return;
+            }
+
+            const fullUser = { id: snap.id, ...snap.data() };
 
             const toArchive = {
-                ...(fullUser || user),
+                ...fullUser,
                 archived: true,
                 deletedAt: Timestamp.now(),
             };
 
-            // Write to archivedUsers collection
+            // Write to archivedUsers collection with same ID
             await setDoc(doc(db, 'archivedUsers', userId), toArchive);
-            // Delete from users collection
-            await deleteDoc(doc(db, 'users', userId));
 
+            // Delete from users collection
+            await deleteDoc(userRef);
+
+            // Log delete
+            if (currentAdmin) {
+                await logAdminChange({
+                    actorId: currentAdmin.uid,
+                    actorEmail: currentAdmin.email,
+                    actorName: currentAdmin.displayName,
+                    action: 'user_deleted',
+                    targetType: 'user',
+                    targetId: userId,
+                    summary: `Admin deleted user "${fullUser.name || rowUser?.name || fullUser.email || 'Unknown'}" (${fullUser.email || rowUser?.email || 'no-email'}).`,
+                    metadata: {
+                        userId,
+                        name: fullUser.name || rowUser?.name || null,
+                        email: fullUser.email || rowUser?.email || null,
+                    },
+                });
+            }
+
+            // Reload lists so the archived modal immediately reflects the change
             await Promise.all([loadUsers(), loadArchivedUsers()]);
             setSelectedUser(null);
         } catch (e) {
             console.error('Failed to archive user:', e);
+            alert('Failed to delete/archive user. Please check your internet connection and Firestore rules.');
         }
     };
 
@@ -454,6 +504,24 @@ function Users() {
 
             // Remove from archivedUsers collection
             await deleteDoc(doc(db, 'archivedUsers', userId));
+
+            // Log restore
+            if (currentAdmin) {
+                await logAdminChange({
+                    actorId: currentAdmin.uid,
+                    actorEmail: currentAdmin.email,
+                    actorName: currentAdmin.displayName,
+                    action: 'user_restored',
+                    targetType: 'user',
+                    targetId: userId,
+                    summary: `Admin restored user "${archived.name}" (${archived.email}).`,
+                    metadata: {
+                        userId,
+                        name: archived.name,
+                        email: archived.email,
+                    },
+                });
+            }
 
             await Promise.all([loadUsers(), loadArchivedUsers()]);
         } catch (e) {
