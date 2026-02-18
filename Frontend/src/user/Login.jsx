@@ -63,7 +63,6 @@ function Login() {
                     theme: 'outline',
                     size: 'large',
                     text: 'signin_with',
-                    width: '100%',
                 });
             }
         }, 100);
@@ -160,6 +159,8 @@ function Login() {
                                 type="text"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="username"
+                                name="username"
                                 className="bg-[#0A1A3A] text-[#CCCCCC] text-sm w-full px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                             />
                         </div>
@@ -171,6 +172,8 @@ function Login() {
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    autoComplete="current-password"
+                                    name="password"
                                     className="bg-[#0A1A3A] text-[#CCCCCC] text-base w-full px-4 py-3 pr-11 rounded-lg outline-none focus:ring-2 focus:ring-[#22D3EE]"
                                 />
                                 <span

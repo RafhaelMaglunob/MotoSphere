@@ -8,12 +8,7 @@ const philippines = {
     format: "## #### ####",
 };
 
-function formatNumber(number, pattern) {
-    let i = 0;
-    return pattern.replace(/#/g, () => number[i++] || "");
-}
-
-function AddContactModal({ onAdd, onClose }) {
+function AddContactModal({ onAdd }) {
     const [name, setName] = useState("");
     const [relation, setRelation] = useState("");
     const [customRelation, setCustomRelation] = useState("");

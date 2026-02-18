@@ -33,6 +33,10 @@ function ForgotPassword() {
 
             if (response.success) {
                 setSuccess(response.message || 'Password reset instructions have been sent to your email.');
+                // In development, backend may return a devResetUrl if email sending failed.
+                if (response.devResetUrl) {
+                    console.log('Dev reset URL:', response.devResetUrl);
+                }
             } else {
                 setError(response.message || 'Failed to process password reset request.');
             }

@@ -5,6 +5,15 @@ import MotoSphere_logo from '../component/img/MotoSphere Logo.png';
 function Terms() {
   const navigate = useNavigate();
 
+  // ✅ Back button fix with fallback
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/"); // fallback if no previous page
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0E27] text-white p-6">
       <div className="max-w-4xl mx-auto">
@@ -15,7 +24,7 @@ function Terms() {
             <h1 className="text-3xl font-bold">Terms and Conditions</h1>
           </div>
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="px-4 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 rounded-lg transition-colors"
           >
             Back
@@ -24,7 +33,9 @@ function Terms() {
 
         {/* Content */}
         <div className="bg-[#0F1729]/90 p-8 rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
-          <p className="text-sm text-[#94A3B8] mb-6">Last Updated: {new Date().toLocaleDateString()}</p>
+          <p className="text-sm text-[#94A3B8] mb-6">
+            Last Updated: {new Date().toLocaleDateString()}
+          </p>
 
           <div className="space-y-6 text-[#CCCCCC]">
             <section>
@@ -50,9 +61,7 @@ function Terms() {
 
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">3. User Account Requirements</h2>
-              <p>
-                To use MotoSphere, you must:
-              </p>
+              <p>To use MotoSphere, you must:</p>
               <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                 <li>Be at least 18 years old</li>
                 <li>Provide accurate and complete registration information</li>
@@ -79,7 +88,7 @@ function Terms() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">5. Safety Disclaimer</h2>
               <p>
-                <strong className="text-yellow-400">IMPORTANT:</strong> MotoSphere is a safety assistance tool but does not guarantee accident prevention or personal safety. The Service:
+                <strong className="text-yellow-400">IMPORTANT:</strong> MotoSphere is a safety assistance tool but does not guarantee accident prevention or personal safety.
               </p>
               <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                 <li>Is not a substitute for safe riding practices</li>
@@ -96,7 +105,7 @@ function Terms() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">6. Data and Privacy</h2>
               <p>
-                Your use of MotoSphere is also governed by our Privacy Policy. By using the Service, you consent to the collection, use, and sharing of your information as described in the Privacy Policy, including:
+                Your use of MotoSphere is also governed by our Privacy Policy.
               </p>
               <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                 <li>Location data for GPS tracking</li>
@@ -109,7 +118,7 @@ function Terms() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">7. Service Availability</h2>
               <p>
-                We strive to maintain service availability but do not guarantee uninterrupted access. The Service may be unavailable due to:
+                We strive to maintain service availability but do not guarantee uninterrupted access.
               </p>
               <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                 <li>Maintenance and updates</li>
@@ -136,46 +145,26 @@ function Terms() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">9. Limitation of Liability</h2>
               <p>
-                To the maximum extent permitted by law, MotoSphere and its operators shall not be liable for:
+                To the maximum extent permitted by law, MotoSphere shall not be liable for damages.
               </p>
-              <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                <li>Any personal injury or property damage</li>
-                <li>Accident-related losses or damages</li>
-                <li>Service interruptions or failures</li>
-                <li>Data loss or corruption</li>
-                <li>Unauthorized access to your account</li>
-                <li>Any indirect, incidental, or consequential damages</li>
-              </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">10. Account Termination</h2>
               <p>
-                We reserve the right to suspend or terminate your account if you:
-              </p>
-              <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                <li>Violate these Terms and Conditions</li>
-                <li>Engage in fraudulent or illegal activity</li>
-                <li>Misuse the Service</li>
-                <li>Fail to maintain account security</li>
-              </ul>
-              <p className="mt-3">
-                You may terminate your account at any time by contacting support or using the account deletion feature.
+                We reserve the right to suspend or terminate your account if you violate these terms.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">11. Changes to Terms</h2>
               <p>
-                We reserve the right to modify these Terms and Conditions at any time. We will notify users of significant changes via email or through the Service. Continued use of the Service after changes constitutes acceptance of the new terms.
+                We reserve the right to modify these Terms at any time.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">12. Contact Information</h2>
-              <p>
-                If you have questions about these Terms and Conditions, please contact us at:
-              </p>
               <ul className="mt-2 ml-4 space-y-1">
                 <li><strong>Email:</strong> support@motosphere.com</li>
                 <li><strong>Phone:</strong> +63 XXX XXX XXXX</li>
@@ -186,14 +175,14 @@ function Terms() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">13. Governing Law</h2>
               <p>
-                These Terms and Conditions shall be governed by and construed in accordance with the laws of the Philippines, without regard to its conflict of law provisions.
+                Governed by the laws of the Philippines.
               </p>
             </section>
           </div>
 
           <div className="mt-8 p-4 bg-[#0A1A3A] rounded-lg border border-[#22D3EE]/30">
             <p className="text-center text-[#9BB3D6]">
-              By using MotoSphere, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.
+              By using MotoSphere, you acknowledge that you agree to these Terms.
             </p>
           </div>
         </div>

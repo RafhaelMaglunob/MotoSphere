@@ -3,9 +3,10 @@ import { Outlet } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
 import { useNavigate } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { signOut, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { authAPI } from '../services/api';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
@@ -44,55 +45,32 @@ function MainLayout() {
 
     // Fetch current user data and handle authentication
     useEffect(() => {
-        // Check if user is authenticated via JWT token (from SSO or backend login)
-        const token = localStorage.getItem('token');
-        const userStr = localStorage.getItem('user');
-        
-        if (token && userStr) {
-            try {
-                const user = JSON.parse(userStr);
-                // Check if user has admin role
-                if (user.role === 'admin') {
-                    // User is authenticated via backend JWT token and is admin
-                    setUserData({
-                        name: user.username || user.email?.split('@')[0] || 'Admin User',
-                        role: 'admin',
-                        email: user.email
-                    });
-                    setLoading(false);
-                    return;
-                }
-            } catch (error) {
-                console.error('Error parsing user data from localStorage:', error);
-            }
-        }
-
-        // If no JWT token, check Firebase Auth (for admin login page)
+        // Always require Firebase Auth for admin pages to ensure Firestore access
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
-                // User is not authenticated via Firebase Auth either
-                // Check again for JWT token as a fallback
-                const token = localStorage.getItem('token');
-                const userStr = localStorage.getItem('user');
-                
-                if (token && userStr) {
-                    try {
-                        const userData = JSON.parse(userStr);
-                        if (userData.role === 'admin') {
-                            setUserData({
-                                name: userData.username || userData.email?.split('@')[0] || 'Admin User',
-                                role: 'admin',
-                                email: userData.email
-                            });
-                            setLoading(false);
-                            return;
+                // Try to bootstrap Firebase session from existing SSO backend session
+                try {
+                    const token = localStorage.getItem('token');
+                    const userStr = localStorage.getItem('user');
+                    if (token && userStr) {
+                        const parsed = JSON.parse(userStr);
+                        if (parsed?.role === 'admin') {
+                            // Ask backend for a Firebase custom token and sign into Firebase
+                            const { customToken, token: altToken, success } = await authAPI.adminGetFirebaseCustomToken();
+                            const firebaseToken = customToken || altToken;
+                            if (firebaseToken) {
+                                await signInWithCustomToken(auth, firebaseToken);
+                                // Let onAuthStateChanged fire again after sign-in
+                                return;
+                            } else if (success === false) {
+                                // fall through to redirect
+                            }
                         }
-                    } catch (error) {
-                        console.error('Error parsing user data:', error);
                     }
+                } catch (e) {
+                    console.warn('Failed to auto-link SSO to Firebase:', e?.message || e);
                 }
-                
-                // No authentication found, redirect to login
+                // Redirect to admin login if no Firebase session and auto-link failed
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 navigate('/admin-login', { replace: true });
@@ -203,8 +181,8 @@ function MainLayout() {
                 className="absolute w-20 md:flex"
                 footer={footer}
             >
-                <div className="flex flex-row space-x-4 items-center mb-7 p-3">
-                    <img src={MotoSphere_Logo}  className="w-24 h-24" alt="MotoSphere Logo" />
+                <div className="w-full flex justify-center items-center mb-7 p-3">
+                    <img src={MotoSphere_Logo} className="w-24 h-24" alt="MotoSphere Logo" />
                 </div>
                 
             </Sidebar>
@@ -232,7 +210,7 @@ function MainLayout() {
                         localStorage.removeItem('token');
                         localStorage.removeItem('user');
                         navigate('/user-login', { replace: true });
-                    } catch (error) {
+                    } catch {
                         localStorage.removeItem('token');
                         localStorage.removeItem('user');
                         navigate('/user-login', { replace: true });

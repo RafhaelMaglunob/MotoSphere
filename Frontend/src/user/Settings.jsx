@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
-import { authAPI } from '../services/api'
+import { authAPI, settingsAPI } from '../services/api'
 import ProfilePictureUpload from '../component/ProfilePictureUpload'
 import TwoFactorSetup from '../component/TwoFactorSetup'
 
@@ -17,6 +17,13 @@ function Settings() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [lang, setLang] = useState('en');
+  const [tz, setTz] = useState('UTC');
+  const [notifSystem, setNotifSystem] = useState(true);
+  const [notifMessages, setNotifMessages] = useState(true);
+  const [phoneDigits, setPhoneDigits] = useState(''); // 10 digits after +63, must start with 9
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsMsg, setPrefsMsg] = useState('');
 
   // Load user data from localStorage and refresh from server
   useEffect(() => {
@@ -37,6 +44,10 @@ function Settings() {
       }
       if (userData.twoFactorEnabled !== undefined) {
         setTwoFactorEnabled(userData.twoFactorEnabled);
+      }
+      if (userData.contactNo && typeof userData.contactNo === 'string') {
+        const m = userData.contactNo.match(/^\+63(\d{10})$/);
+        setPhoneDigits(m ? m[1] : '');
       }
 
       // Then refresh from server to get latest data
@@ -59,9 +70,23 @@ function Settings() {
           if (response.user.deviceId) {
             setDeviceId(response.user.deviceId);
           }
+          if (response.user.contactNo && typeof response.user.contactNo === 'string') {
+            const m = response.user.contactNo.match(/^\+63(\d{10})$/);
+            setPhoneDigits(m ? m[1] : '');
+          }
           
           // Update localStorage with fresh data
           localStorage.setItem("user", JSON.stringify(response.user));
+        }
+        const sres = await settingsAPI.getUserSettings();
+        if (sres.success && sres.settings) {
+          const p = sres.settings.preferences || {};
+          const n = (p.notifications) || {};
+          setLang(p.language || 'en');
+          setTz(p.timezone || 'UTC');
+          setNotifSystem(n.systemAlerts !== false);
+          setNotifMessages(n.messages !== false);
+          // Removed profile visibility; keep other preferences only
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -97,7 +122,11 @@ function Settings() {
     setError("");
     setSuccess("");
 
-    // Validation
+    // Validation (Registration-consistent: +63 + 10 digits starting with 9)
+    if (phoneDigits && (!/^\d{10}$/.test(phoneDigits) || !phoneDigits.startsWith('9'))) {
+      setError("Phone must be 10 digits and start with 9 (e.g., 9123456789)");
+      return;
+    }
     if (!name || name.trim().length === 0) {
       setError("Username is required");
       return;
@@ -109,7 +138,12 @@ function Settings() {
     }
 
     // Check if anything changed
-    if (name === username && userEmail === email) {
+    const currentUserLS = JSON.parse(localStorage.getItem("user") || "{}");
+    const currentContact = (currentUserLS.contactNo || '');
+    const currentDeviceId = (currentUserLS.deviceId || currentUserLS.deviceID || '');
+    const newContact = phoneDigits ? `+63${phoneDigits}` : '';
+    const deviceIdChanged = (deviceId && deviceId.trim()) ? (deviceId.trim() !== currentDeviceId) : false;
+    if (name === username && userEmail === email && newContact === currentContact && !deviceIdChanged) {
       setSuccess("No changes to save");
       return;
     }
@@ -117,14 +151,26 @@ function Settings() {
     setLoading(true);
 
     try {
-      const updateData = {
-        username: name.trim(),
-        email: userEmail.trim()
-      };
+      const updateData = {};
+      if (name.trim() !== (username || '')) {
+        updateData.username = name.trim();
+      }
+      if (userEmail.trim() !== (email || '')) {
+        updateData.email = userEmail.trim();
+      }
       
       // Only include deviceId if it's provided
       if (deviceId && deviceId.trim()) {
         updateData.deviceId = deviceId.trim();
+      }
+      if (phoneDigits) {
+        updateData.contactNo = `+63${phoneDigits}`;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        setSuccess("No changes to save");
+        setLoading(false);
+        return;
       }
 
       const response = await authAPI.updateProfile(updateData);
@@ -138,6 +184,13 @@ function Settings() {
         const userData = JSON.parse(localStorage.getItem("user") || "{}");
         userData.username = response.user.username;
         userData.email = response.user.email;
+        if (response.user.contactNo !== undefined) {
+          userData.contactNo = response.user.contactNo;
+        }
+        if (response.user.phoneVerified !== undefined) {
+          userData.phoneVerified = response.user.phoneVerified;
+          setPhoneVerified(response.user.phoneVerified);
+        }
         if (response.user.deviceId) {
           userData.deviceId = response.user.deviceId;
           userData.deviceID = response.user.deviceId; // Keep both for compatibility
@@ -287,6 +340,25 @@ function Settings() {
             )}
           </div>
         </div>
+        
+        {/* Phone Number (+63 prefix, 10 digits) */}
+        <div className='flex flex-col mt-3 gap-2'>
+          <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Phone Number (+63)</label>
+          <div className="flex gap-2">
+            <span className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl flex items-center`}>+63</span>
+            <input
+              type="text"
+              value={phoneDigits}
+              onChange={(e)=> setPhoneDigits(e.target.value.replace(/\\D/g,'').slice(0,10))}
+              placeholder="9123456789"
+              className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl w-full min-h-12`}
+              maxLength={10}
+            />
+          </div>
+          {!phoneVerified && phoneDigits && (
+            <p className="text-xs text-[#9BB3D6]">Changing phone resets verification. Tap Verify Phone after saving.</p>
+          )}
+        </div>
 
         {/* Device ID */}
         <div className='flex flex-col mt-5 gap-2'>
@@ -348,6 +420,55 @@ function Settings() {
               ></div>
             </div>
           </div>
+          <div className={`${isLight ? "bg-[#F1F1F1]" : 'bg-[#0A1A3A]'} flex flex-row w-full justify-between px-5 py-3 items-center rounded-xl`}>
+            <span className={`${isLight ? "text-black" : "text-white"} text-sm`}>System Alerts</span>
+            <input type="checkbox" checked={notifSystem} onChange={() => setNotifSystem(!notifSystem)} />
+          </div>
+          <div className={`${isLight ? "bg-[#F1F1F1]" : 'bg-[#0A1A3A]'} flex flex-row w-full justify-between px-5 py-3 items-center rounded-xl`}>
+            <span className={`${isLight ? "text-black" : "text-white"} text-sm`}>Messages</span>
+            <input type="checkbox" checked={notifMessages} onChange={() => setNotifMessages(!notifMessages)} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Language</label>
+              <select value={lang} onChange={(e)=>setLang(e.target.value)} className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl`}>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Timezone</label>
+              <input type="text" value={tz} onChange={(e)=>setTz(e.target.value)} className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl`} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={async ()=>{
+                setPrefsMsg('');
+                setSavingPrefs(true);
+                try{
+                  const payload = {
+                    preferences:{
+                      language: lang,
+                      timezone: tz,
+                      notifications:{
+                        systemAlerts: notifSystem,
+                        messages: notifMessages
+                      }
+                    },
+                    // Removed security.visibility
+                  };
+                  const res = await settingsAPI.updateUserSettings(payload);
+                  if (res.success) setPrefsMsg('Preferences saved');
+                }catch(e){ setPrefsMsg(e.message||'Failed to save'); }
+                finally{ setSavingPrefs(false); setTimeout(()=>setPrefsMsg(''),2000); }
+              }}
+              disabled={savingPrefs}
+              className="px-6 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 text-white font-semibold rounded-lg disabled:opacity-50"
+            >
+              {savingPrefs ? 'Saving...' : 'Save Preferences'}
+            </button>
+          </div>
+          {prefsMsg && <div className="text-sm mt-2 text-green-400">{prefsMsg}</div>}
         </div>
       </div>
 
@@ -369,6 +490,40 @@ function Settings() {
               localStorage.setItem("user", JSON.stringify(userData));
             }}
           />
+        </div>
+        {/* Removed 'Logout Other Devices' and 'Profile Visibility' controls */}
+      </div>
+
+      {/* Privacy */}
+      <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} p-7 mt-8 rounded-xl md:w-[70%]`}>
+        <h1 className={`${isLight ? "text-black" : "text-white"} text-lg font-semibold mb-4`}>Privacy</h1>
+        <div className="flex flex-col md:flex-row gap-3">
+          <button
+            onClick={async ()=>{
+              try{
+                const res = await settingsAPI.downloadMyData();
+                const blob = new Blob([JSON.stringify(res.data||{},null,2)],{type:'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'motosphere-data.json'; a.click(); URL.revokeObjectURL(url);
+              }catch(e){ alert(e.message||'Failed to prepare data'); }
+            }}
+            className="px-4 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 text-white rounded-lg"
+          >
+            Download My Data
+          </button>
+          <button
+            onClick={async ()=>{
+              if (!window.confirm('This will schedule your account for deletion. Continue?')) return;
+              try{
+                const res = await settingsAPI.deleteAccount();
+                alert(res.message||'Account deletion scheduled');
+              }catch(e){ alert(e.message||'Failed'); }
+            }}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+          >
+            Delete Account
+          </button>
         </div>
       </div>
     </div>

@@ -88,6 +88,25 @@ export const authAPI = {
       body: JSON.stringify({ email, password }),
     });
   },
+  
+  // Admin exchange Firebase token
+  adminExchangeFirebase: async (idToken) => {
+    return apiCall('/auth/admin/exchange-firebase', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    });
+  },
+  
+  // Admin: obtain Firebase Custom Token from backend (SSO → Firebase)
+  adminGetFirebaseCustomToken: async () => {
+    // Authorization header is auto-attached by apiCall from localStorage token
+    // Accepts either { customToken } or { token } in response for flexibility
+    const res = await apiCall('/auth/admin/firebase-custom-token', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    return res;
+  },
 
   // Verify token
   verifyToken: async () => {
@@ -274,6 +293,54 @@ export const authAPI = {
 };
 
 export default apiCall;
+
+export const settingsAPI = {
+  getUserSettings: async () => {
+    return apiCall('/user/settings', { method: 'GET' });
+  },
+  updateUserSettings: async (payload) => {
+    return apiCall('/user/settings', { method: 'PATCH', body: JSON.stringify(payload) });
+  },
+  getSessions: async () => {
+    return apiCall('/user/settings/sessions', { method: 'GET' });
+  },
+  logoutOtherDevices: async (keepSessionId) => {
+    return apiCall('/user/settings/security/logout-others', { method: 'POST', body: JSON.stringify({ keepSessionId }) });
+  },
+  getLoginHistory: async (limit = 50) => {
+    return apiCall(`/user/settings/security/login-history?limit=${limit}`, { method: 'GET' });
+  },
+  regenerateBackupCodes: async () => {
+    return apiCall('/user/settings/security/backup-codes/regenerate', { method: 'POST' });
+  },
+  downloadMyData: async () => {
+    return apiCall('/user/settings/privacy/download', { method: 'POST' });
+  },
+  deleteAccount: async () => {
+    return apiCall('/user/settings/privacy/delete-account', { method: 'DELETE' });
+  },
+  getAdminSettings: async () => {
+    return apiCall('/admin/settings', { method: 'GET' });
+  },
+  updateAdminSettings: async (payload) => {
+    return apiCall('/admin/settings', { method: 'PATCH', body: JSON.stringify(payload) });
+  },
+  broadcastNotification: async (payload) => {
+    return apiCall('/admin/notifications/broadcast', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  smtpTest: async (toEmail) => {
+    return apiCall('/admin/settings/smtp/test', { method: 'POST', body: JSON.stringify({ toEmail }) });
+  },
+  getPublicBroadcasts: async () => {
+    return apiCall('/public/broadcasts', { method: 'GET' });
+  },
+  getAdminBroadcasts: async (limit = 50) => {
+    return apiCall(`/admin/broadcasts?limit=${limit}`, { method: 'GET' });
+  },
+  deleteBroadcast: async (id) => {
+    return apiCall(`/admin/broadcasts/${id}`, { method: 'DELETE' });
+  },
+};
 
 export const psgcAPI = {
   _fetchJSON: async (url) => {

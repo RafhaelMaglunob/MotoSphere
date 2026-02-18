@@ -81,7 +81,7 @@ function EditContactModal({ data, onSave, onClose }) {
         }
     };
 
-    const handleSave = (e) => {
+    const handleSave = () => {
         // Build contact object and call onSave (temporary, UI-only)
         // Format: +639123456789 (no space, matches registration format)
         const contactData = {

@@ -268,7 +268,7 @@ function Users() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [archivedUsers, setArchivedUsers] = useState([]);
     const [showArchive, setShowArchive] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [currentAdmin, setCurrentAdmin] = useState(null);
 
     // Track currently logged in admin (for attribution in logs)
@@ -426,7 +426,9 @@ function Users() {
             setSelectedUser(null);
         } catch (e) {
             console.error('Failed to save user:', e);
-            alert('Failed to save user changes. Please check your internet connection and Firestore rules.');
+            const code = e?.code || e?.name || 'unknown_error';
+            const msg = e?.message || 'An unknown error occurred.';
+            alert(`Failed to save user changes.\nReason: ${code}\n${msg}\n\nIf this is permission-denied, update Firestore rules to allow admins to edit users.`);
         }
     };
 
@@ -484,7 +486,9 @@ function Users() {
             setSelectedUser(null);
         } catch (e) {
             console.error('Failed to archive user:', e);
-            alert('Failed to delete/archive user. Please check your internet connection and Firestore rules.');
+            const code = e?.code || e?.name || 'unknown_error';
+            const msg = e?.message || 'An unknown error occurred.';
+            alert(`Failed to delete/archive user.\nReason: ${code}\n${msg}\n\nIf this is permission-denied, ensure Firestore rules let admins write to users and archivedUsers collections.`);
         }
     };
 
@@ -493,7 +497,7 @@ function Users() {
             const archived = archivedUsers.find(u => u.id === userId);
             if (!archived) return;
 
-            const { deletedAt, ...rest } = archived;
+            const { deletedAt: _deletedAt, ...rest } = archived;
 
             // Restore to users collection
             await setDoc(doc(db, 'users', userId), {
@@ -526,6 +530,9 @@ function Users() {
             await Promise.all([loadUsers(), loadArchivedUsers()]);
         } catch (e) {
             console.error('Failed to restore user:', e);
+            const code = e?.code || e?.name || 'unknown_error';
+            const msg = e?.message || 'An unknown error occurred.';
+            alert(`Failed to restore user.\nReason: ${code}\n${msg}\n\nIf this is permission-denied, update Firestore rules for users and archivedUsers.`);
         }
     };
 

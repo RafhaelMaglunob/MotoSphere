@@ -78,6 +78,94 @@ const upload = multer({
   }
 });
 
+// Issue Firebase Custom Token for current admin (SSO -> Firebase link)
+// Requires backend admin JWT (verifyAdmin)
+router.post('/admin/firebase-custom-token', verifyAdmin, async (req, res) => {
+  try {
+    const adminUser = req.user;
+    if (!adminUser || (adminUser.role || '').toString().toLowerCase() !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin privileges required' });
+    }
+    const uid = adminUser.id;
+    const email = adminUser.email || undefined;
+
+    // Ensure a Firebase Auth user exists for this UID (idempotent)
+    try {
+      await admin.auth().getUser(uid);
+    } catch (e) {
+      // Create user if not found (safe on unique uid)
+      try {
+        await admin.auth().createUser({ uid, email });
+      } catch (createErr) {
+        // Ignore if already exists or email conflicts; we'll still issue token for UID
+        if (!String(createErr?.message || '').includes('already exists')) {
+          console.warn('createUser warning:', createErr?.message || createErr);
+        }
+      }
+    }
+
+    // Optionally set custom claim (admin)
+    try {
+      await admin.auth().setCustomUserClaims(uid, { admin: true });
+    } catch (claimErr) {
+      // Non-blocking
+      console.warn('setCustomUserClaims warning:', claimErr?.message || claimErr);
+    }
+
+    const customToken = await admin.auth().createCustomToken(uid, { admin: true });
+    return res.json({ success: true, customToken });
+  } catch (error) {
+    console.error('Failed to issue Firebase custom token:', error);
+    return res.status(500).json({ success: false, message: 'Unable to create Firebase custom token' });
+  }
+});
+
+// Exchange Firebase ID token for backend admin JWT
+router.post('/admin/exchange-firebase', async (req, res) => {
+  try {
+    const { idToken } = req.body || {};
+    if (!idToken || typeof idToken !== 'string') {
+      return res.status(400).json({ success: false, message: 'idToken is required' });
+    }
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(idToken);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid Firebase token' });
+    }
+    const uid = decoded.uid;
+    const snap = await admin.firestore().collection('users').doc(uid).get();
+    if (!snap.exists) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const data = snap.data() || {};
+    const role = (data.role || '').toString().toLowerCase();
+    if (role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin privileges required' });
+    }
+    // Ensure a backend user record exists
+    let user = await User.findById(uid);
+    if (!user) {
+      user = await User.create({
+        id: uid,
+        username: data.username || data.name || 'Admin',
+        email: data.email || '',
+        role: 'admin',
+        password: null
+      });
+    }
+    const token = jwt.sign(
+      { userId: uid, role: 'admin' },
+      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+    res.json({ success: true, token, user: { id: uid, email: data.email || '', role: 'admin' } });
+  } catch (error) {
+    console.error('Admin exchange error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to exchange token' });
+  }
+});
+
 // Generate JWT Token
 const generateToken = (userId, role) => {
   return jwt.sign(
@@ -664,6 +752,7 @@ router.get('/profile', verifyToken, async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        contactNo: user.contactNo || '',
         role: user.role,
         profilePicture: user.profilePicture || null,
         emailVerified: user.emailVerified || false,
@@ -684,7 +773,7 @@ router.get('/profile', verifyToken, async (req, res) => {
 // Update User Profile
 router.put('/profile', verifyToken, async (req, res) => {
   try {
-    const { username, email } = req.body;
+    const { username, email, contactNo } = req.body;
     const userId = req.user.id;
 
     // Validate username if provided
@@ -738,6 +827,23 @@ router.put('/profile', verifyToken, async (req, res) => {
       updateData.deviceID = updateData.deviceId; // Store both formats for compatibility
     }
 
+    if (contactNo !== undefined) {
+      const normalized = String(contactNo || '').trim();
+      if (!/^\+639\d{9}$/.test(normalized)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid phone number. Use +639XXXXXXXXX format'
+        });
+      }
+      const changed = (req.user.contactNo || '') !== normalized;
+      updateData.contactNo = normalized;
+      if (changed) {
+        updateData.phoneVerified = false;
+        updateData.phoneOTPCode = admin.firestore.FieldValue.delete();
+        updateData.phoneOTPExpiry = admin.firestore.FieldValue.delete();
+      }
+    }
+
     // Update user
     const updatedUser = await User.update(userId, updateData);
 
@@ -748,6 +854,7 @@ router.put('/profile', verifyToken, async (req, res) => {
         id: updatedUser.id,
         username: updatedUser.username,
         email: updatedUser.email,
+        contactNo: updatedUser.contactNo || '',
         role: updatedUser.role,
         profilePicture: updatedUser.profilePicture || null,
         emailVerified: updatedUser.emailVerified || false,
@@ -1186,17 +1293,25 @@ router.post('/forgot-password', async (req, res) => {
     const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     // Send password reset email
+    let emailSent = true;
+    let devHint = undefined;
     try {
       await sendPasswordResetEmail(emailValidation.email, resetToken, resetUrl);
       console.log(`Password reset email sent to: ${emailValidation.email}`);
     } catch (emailError) {
+      emailSent = false;
       console.error('Failed to send password reset email:', emailError);
-      // Still return success to prevent email enumeration
+      // Provide a developer hint in non-production to ease local testing
+      if ((process.env.NODE_ENV || 'development') !== 'production') {
+        devHint = resetUrl;
+      }
     }
 
     res.json({
       success: true,
-      message: 'If an account with that email exists, password reset instructions have been sent.'
+      message: 'If an account with that email exists, password reset instructions have been sent.',
+      // Expose a dev-only reset link when email fails to send
+      devResetUrl: devHint
     });
   } catch (error) {
     console.error('Forgot password error:', error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline';
@@ -21,7 +21,7 @@ function ContactPersons() {
   const [isConfirmOpen, setConfirmOpen] = useState(false)
   const [deleteContactId, setDeleteContactId] = useState(null);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const allContacts = contacts || [];

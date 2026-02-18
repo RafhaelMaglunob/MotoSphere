@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate, Navigate } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
-import { authAPI } from '../services/api';
+import { authAPI, settingsAPI } from '../services/api';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
 import { UsersIcon } from '../component/svg/UsersIcon.jsx';
 import { DevicesIcon } from '../component/svg/DevicesIcon.jsx';
 import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
+import { InfoCircle } from '../component/svg/InfoCircleIcon';
 
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
@@ -34,12 +35,27 @@ function MainLayout() {
     const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const location = useLocation();
-    const [username, setUsername] = useState("")
-    const [email, setEmail] = useState("")
+    const initialUser = (() => {
+        try {
+            const s = localStorage.getItem("user");
+            if (!s) return { username: "", email: "" };
+            const u = JSON.parse(s);
+            return {
+                username: u?.username || "",
+                email: u?.email || ""
+            };
+        } catch {
+            return { username: "", email: "" };
+        }
+    })();
+    const [username, setUsername] = useState(initialUser.username)
+    const [email, setEmail] = useState(initialUser.email)
     const [contacts, setContacts] = useState([])
     const deviceNo = "MK-II"
     const lastSynced = "2"
     const isConnected = false
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [announcements, setAnnouncements] = useState([]);
 
     // Load user data from localStorage on mount and check role
     useEffect(() => {
@@ -60,9 +76,6 @@ function MainLayout() {
                 navigate('/admin/dashboard', { replace: true });
                 return;
             }
-
-            setUsername(user.username || "");
-            setEmail(user.email || "");
 
             // Refresh user data from server to get latest profile picture
             const refreshUserData = async () => {
@@ -108,28 +121,42 @@ function MainLayout() {
         }
     }, []);
 
+    // Persist theme preference (must run unconditionally before any early returns)
+    useEffect(() => {
+        localStorage.setItem("isLight", JSON.stringify(isLight));
+    }, [isLight]);
+
+    // Load public broadcasts for signed-in users (via backend API)
+    useEffect(() => {
+        const loadBroadcasts = async () => {
+            try{
+                const res = await settingsAPI.getPublicBroadcasts();
+                if (res.success) setAnnouncements(res.broadcasts || []);
+            }catch(e){
+                console.warn('Announcements load failed:', e?.message || e);
+            }
+        };
+        const token = localStorage.getItem("token");
+        if (token) loadBroadcasts();
+    }, []);
     // Check if user is authenticated and not admin
     const userData = localStorage.getItem("user");
     const token = localStorage.getItem("token");
-
     if (!token || !userData) {
         return <Navigate to="/user-login" replace />;
     }
-
     let user;
     try {
         user = JSON.parse(userData);
-        // If admin, redirect to admin dashboard
-        if (user.role === 'admin') {
-            return <Navigate to="/admin/dashboard" replace />;
-        }
-    } catch (error) {
+    } catch {
+        user = null;
+    }
+    if (!user) {
         return <Navigate to="/user-login" replace />;
     }
-
-    useEffect(() => {
-        localStorage.setItem("isLight", JSON.stringify(isLight));
-    }, [isLight])
+    if (user.role === 'admin') {
+        return <Navigate to="/admin/dashboard" replace />;
+    }
 
     const sensors = [
         { type: "Accelerometer", connection: "Active" },
@@ -141,6 +168,7 @@ function MainLayout() {
         { icon: DashboardIcon, name: "Home", path: "/user/home" },
         { icon: UsersIcon, name: "Contact Persons", path: "/user/contact-persons" },
         { icon: DevicesIcon, name: "Notifications", path: "/user/notifications" },
+        { icon: InfoCircle, name: "Announcements", path: "/user/announcements" },
         { icon: SettingsIcon, name: "Settings", path: "/user/settings" }
     ]
 
@@ -151,7 +179,6 @@ function MainLayout() {
         btn => location.pathname.startsWith(btn.path)
     )?.name;
 
-    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const handleLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -179,7 +206,7 @@ function MainLayout() {
                 footer={footer}
             >
                 <div className="flex flex-col items-center mb-7 p-3">
-                    <img src={MotoSphere_Logo} className="w-24 h-24 mb-2" alt="MotoSphere Logo" />
+                    <img src={MotoSphere_Logo} className="w-16 h-16 object-contain mb-2" alt="MotoSphere Logo" />
                     <h1 className={`text-lg font-bold ${isLight ? "text-black" : "text-white"}`}>MotoSphere</h1>
                 </div>
             </Sidebar>
@@ -210,6 +237,21 @@ function MainLayout() {
                 {/* Dito natin inalis ang web-fade-in class para hindi magkaroon ng double animation 
                     kapag ang bata (UserHome) ay may sariling animation na */}
                 <main className="flex-1 p-6 overflow-x-hidden">
+                    {announcements.length > 0 && (
+                        <div className={`${isLight ? "bg-[#E8F4FF] text-black" : "bg-[#0F2A52] text-white"} p-4 rounded-lg mb-4`}>
+                            <div className="font-semibold">{announcements[0].title}</div>
+                            <div className="text-sm opacity-90">{announcements[0].body}</div>
+                            <div className="flex items-center justify-between mt-2">
+                                <div className="text-xs opacity-70">{announcements[0].createdAt ? new Date(announcements[0].createdAt).toLocaleString() : ''}</div>
+                                <button
+                                    onClick={() => { window.location.href = '/user/announcements'; }}
+                                    className={`${isLight ? "text-[#0A1A3A]" : "text-[#2EA8FF]"} text-xs underline`}
+                                >
+                                    View all
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <Outlet context={{
                         username: username,
                         setUsername: setUsername,
