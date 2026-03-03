@@ -242,31 +242,31 @@ function Settings() {
                     <div className="text-[#9BB3D6] text-sm">Loading profile...</div>
                 ) : (
                     <>
-                <input
-                    type="text"
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    placeholder="Admin Name"
-                    className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none focus:ring-2 focus:ring-[#2EA8FF]"
-                />
-                <input
-                    type="email"
-                    value={adminEmail}
-                    readOnly
-                    placeholder="Admin Email"
-                    className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none opacity-80"
-                />
-                <div className="text-xs text-[#9BB3D6]">
-                    Role: <span className="text-white font-semibold capitalize">{role || 'admin'}</span>
-                </div>
+                        <input
+                            type="text"
+                            value={adminName}
+                            onChange={(e) => setAdminName(e.target.value)}
+                            placeholder="Admin Name"
+                            className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none focus:ring-2 focus:ring-[#2EA8FF]"
+                        />
+                        <input
+                            type="email"
+                            value={adminEmail}
+                            readOnly
+                            placeholder="Admin Email"
+                            className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none opacity-80"
+                        />
+                        <div className="text-xs text-[#9BB3D6]">
+                            Role: <span className="text-white font-semibold capitalize">{role || 'admin'}</span>
+                        </div>
 
-                {/* Change Password Button */}
-                <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="mt-2 px-4 py-2 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] w-max font-medium"
-                >
-                    Change Password
-                </button>
+                        {/* Change Password Button */}
+                        <button
+                            onClick={() => setShowPasswordModal(true)}
+                            className="mt-2 px-4 py-2 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] w-max font-medium"
+                        >
+                            Change Password
+                        </button>
                     </>
                 )}
             </div>
@@ -283,7 +283,7 @@ function Settings() {
                                 <input
                                     type="text"
                                     value={systemSettings.systemConfig.appName}
-                                    onChange={(e)=>setSystemSettings(s=>({...s,systemConfig:{...s.systemConfig,appName:e.target.value}}))}
+                                    onChange={(e) => setSystemSettings(s => ({ ...s, systemConfig: { ...s.systemConfig, appName: e.target.value } }))}
                                     className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none"
                                 />
                             </div>
@@ -291,31 +291,15 @@ function Settings() {
                                 <label className="text-sm text-[#9BB3D6]">Default Theme</label>
                                 <select
                                     value={systemSettings.systemConfig.defaultTheme}
-                                    onChange={(e)=>setSystemSettings(s=>({...s,systemConfig:{...s.systemConfig,defaultTheme:e.target.value}}))}
+                                    onChange={(e) => setSystemSettings(s => ({ ...s, systemConfig: { ...s.systemConfig, defaultTheme: e.target.value } }))}
                                     className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none"
                                 >
                                     <option value="light">Light</option>
                                     <option value="dark">Dark</option>
                                 </select>
                             </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm text-[#9BB3D6]">System Timezone</label>
-                                <input
-                                    type="text"
-                                    value={systemSettings.systemConfig.systemTimezone}
-                                    onChange={(e)=>setSystemSettings(s=>({...s,systemConfig:{...s.systemConfig,systemTimezone:e.target.value}}))}
-                                    className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none"
-                                />
-                            </div>
-                            <label className="flex items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    checked={!!systemSettings.systemConfig.maintenanceMode}
-                                    onChange={(e)=>setSystemSettings(s=>({...s,systemConfig:{...s.systemConfig,maintenanceMode:e.target.checked}}))}
-                                    className="w-5 h-5 accent-[#2EA8FF]"
-                                />
-                                <span>Maintenance Mode</span>
-                            </label>
+
+
                         </div>
                         <div className="flex justify-end">
                             <button
@@ -336,26 +320,26 @@ function Settings() {
                     type="text"
                     placeholder="Title"
                     value={broadcastTitle}
-                    onChange={(e)=>setBroadcastTitle(e.target.value)}
+                    onChange={(e) => setBroadcastTitle(e.target.value)}
                     className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none"
                 />
                 <textarea
                     placeholder="Message"
                     value={broadcastBody}
-                    onChange={(e)=>setBroadcastBody(e.target.value)}
+                    onChange={(e) => setBroadcastBody(e.target.value)}
                     className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none h-32"
                 />
                 <div className="flex justify-end">
                     <button
-                        onClick={async ()=>{
-                            if(!broadcastTitle || !broadcastBody){ alert('Fill title and message'); return; }
-                            try{
-                                await settingsAPI.broadcastNotification({ title:broadcastTitle, body:broadcastBody, audience:'all' });
+                        onClick={async () => {
+                            if (!broadcastTitle || !broadcastBody) { alert('Fill title and message'); return; }
+                            try {
+                                await settingsAPI.broadcastNotification({ title: broadcastTitle, body: broadcastBody, audience: 'all' });
                                 setBroadcastTitle(''); setBroadcastBody('');
                                 const b = await settingsAPI.getAdminBroadcasts(50);
                                 if (b.success) setBroadcasts(b.broadcasts || []);
                                 alert('Broadcast sent');
-                            }catch(e){ alert(e.message||'Failed'); }
+                            } catch (e) { alert(e.message || 'Failed'); }
                         }}
                         className="px-6 py-3 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] font-semibold"
                     >
@@ -380,12 +364,12 @@ function Settings() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={async ()=>{
+                                        onClick={async () => {
                                             if (!confirm('Delete this broadcast?')) return;
-                                            try{
+                                            try {
                                                 await settingsAPI.deleteBroadcast(b.id);
                                                 setBroadcasts(prev => prev.filter(x => x.id !== b.id));
-                                            }catch(e){ alert(e.message||'Failed'); }
+                                            } catch (e) { alert(e.message || 'Failed'); }
                                         }}
                                         className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
                                     >
@@ -401,32 +385,20 @@ function Settings() {
             <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
                 <h2 className="text-xl font-semibold">SMTP Test</h2>
                 <button
-                    onClick={async ()=>{
+                    onClick={async () => {
                         const toEmail = prompt('Send test email to:');
-                        if(!toEmail) return;
-                        try{
+                        if (!toEmail) return;
+                        try {
                             await settingsAPI.smtpTest(toEmail);
                             alert('Test email requested');
-                        }catch(e){ alert(e.message||'Failed'); }
+                        } catch (e) { alert(e.message || 'Failed'); }
                     }}
                     className="px-6 py-3 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] font-semibold"
                 >
                     Send Test Email
                 </button>
             </div>
-            {/* Notifications */}
-            <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
-                <h2 className="text-xl font-semibold">Notifications</h2>
-                <label className="flex items-center gap-3">
-                    <input
-                        type="checkbox"
-                        checked={notifications}
-                        onChange={() => setNotifications(!notifications)}
-                        className="w-5 h-5 accent-[#2EA8FF]"
-                    />
-                    <span>Enable Email Notifications</span>
-                </label>
-            </div>
+
 
             {/* Save Button */}
             <div className="flex justify-end">

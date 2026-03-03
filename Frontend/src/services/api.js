@@ -222,8 +222,17 @@ export const authAPI = {
 
   // Phone Verification
   sendPhoneOTP: async () => {
+    // If we already have a contactNo in localStorage, include it so backend can set it if missing
+    let contactNo;
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      if (u && typeof u.contactNo === 'string' && u.contactNo.trim()) {
+        contactNo = u.contactNo.trim();
+      }
+    } catch { /* ignore */ }
     return apiCall('/auth/send-phone-otp', {
       method: 'POST',
+      body: JSON.stringify(contactNo ? { contactNo } : {}),
     });
   },
 

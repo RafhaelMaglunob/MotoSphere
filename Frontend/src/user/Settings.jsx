@@ -8,7 +8,7 @@ function Settings() {
   const { email, username, setUsername, setEmail, isLight, setIsLight } = useOutletContext();
   const navigate = useNavigate();
   const [name, setName] = useState(username || "")
-  const [ userEmail, setUserEmail ] = useState(email || "")
+  const [userEmail, setUserEmail] = useState(email || "")
   const [deviceId, setDeviceId] = useState("")
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +74,7 @@ function Settings() {
             const m = response.user.contactNo.match(/^\+63(\d{10})$/);
             setPhoneDigits(m ? m[1] : '');
           }
-          
+
           // Update localStorage with fresh data
           localStorage.setItem("user", JSON.stringify(response.user));
         }
@@ -96,13 +96,13 @@ function Settings() {
 
     loadUserData();
   }, []);
-  
-  const [ notificationEnabled, setNotificationsEnabled] = useState(() => {
+
+  const [notificationEnabled, setNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem("notificationEnabled")
     return saved ? JSON.parse(saved) : false;
   })
 
-  const [ emailNotificationEnabled, setEmailNotificationsEnabled] = useState(() => {
+  const [emailNotificationEnabled, setEmailNotificationsEnabled] = useState(() => {
     const saved = localStorage.getItem("emailNotificationEnabled");
     return saved ? JSON.parse(saved) : false;
   })
@@ -158,7 +158,7 @@ function Settings() {
       if (userEmail.trim() !== (email || '')) {
         updateData.email = userEmail.trim();
       }
-      
+
       // Only include deviceId if it's provided
       if (deviceId && deviceId.trim()) {
         updateData.deviceId = deviceId.trim();
@@ -186,6 +186,8 @@ function Settings() {
         userData.email = response.user.email;
         if (response.user.contactNo !== undefined) {
           userData.contactNo = response.user.contactNo;
+          const m = (response.user.contactNo || '').match(/^\+63(\d{10})$/);
+          setPhoneDigits(m ? m[1] : '');
         }
         if (response.user.phoneVerified !== undefined) {
           userData.phoneVerified = response.user.phoneVerified;
@@ -198,7 +200,7 @@ function Settings() {
         localStorage.setItem("user", JSON.stringify(userData));
 
         setSuccess("Profile updated successfully!");
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(""), 3000);
       } else {
@@ -231,18 +233,18 @@ function Settings() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          
+
           {/* Username */}
           <div className="flex flex-col gap-2">
             <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>User Name</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={name}
               onChange={((e) => setName(e.target.value))}
-              className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`} 
+              className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`}
             />
           </div>
-          
+
           {/* Light Mode */}
           <div className="flex flex-col gap-2">
             <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Light Mode</label>
@@ -261,10 +263,10 @@ function Settings() {
             </div>
           </div>
         </div>
-        
+
         {/* Profile Picture */}
         <div className='flex flex-col mt-5 gap-2'>
-          <ProfilePictureUpload 
+          <ProfilePictureUpload
             currentPicture={profilePicture}
             onUploadSuccess={async (url) => {
               console.log('Profile picture uploaded, URL:', url);
@@ -272,7 +274,7 @@ function Settings() {
               const userData = JSON.parse(localStorage.getItem("user") || "{}");
               userData.profilePicture = url;
               localStorage.setItem("user", JSON.stringify(userData));
-              
+
               // Refresh profile data from server to ensure consistency
               try {
                 const response = await authAPI.getProfile();
@@ -311,12 +313,12 @@ function Settings() {
               </button>
             )}
           </div>
-          <input 
-              type="text" 
-              value={userEmail}
-              onChange={((e) => setUserEmail(e.target.value))}
-              className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`}
-            />
+          <input
+            type="text"
+            value={userEmail}
+            onChange={((e) => setUserEmail(e.target.value))}
+            className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`}
+          />
         </div>
 
         {/* Phone Verification */}
@@ -340,7 +342,7 @@ function Settings() {
             )}
           </div>
         </div>
-        
+
         {/* Phone Number (+63 prefix, 10 digits) */}
         <div className='flex flex-col mt-3 gap-2'>
           <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Phone Number (+63)</label>
@@ -349,7 +351,7 @@ function Settings() {
             <input
               type="text"
               value={phoneDigits}
-              onChange={(e)=> setPhoneDigits(e.target.value.replace(/\\D/g,'').slice(0,10))}
+              onChange={(e) => setPhoneDigits(e.target.value.replace(/\\D/g, '').slice(0, 10))}
               placeholder="9123456789"
               className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl w-full min-h-12`}
               maxLength={10}
@@ -360,19 +362,9 @@ function Settings() {
           )}
         </div>
 
-        {/* Device ID */}
-        <div className='flex flex-col mt-5 gap-2'>
-          <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Device ID</label>
-          <input 
-              type="text" 
-              value={deviceId}
-              onChange={((e) => setDeviceId(e.target.value))}
-              placeholder="Enter your device ID"
-              className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} bg-[#0A1A3A] px-3 py-2 items-center rounded-xl w-full min-h-12`}
-            />
-        </div>
-        
-        <div 
+
+
+        <div
           className="flex justify-end mt-4"
         >
           <button
@@ -384,7 +376,7 @@ function Settings() {
           </button>
         </div>
       </div>
-                
+
       {/* Notification Settings */}
       <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} p-7 mt-8 rounded-xl md:w-[70%]`}>
         <h1 className={`${isLight ? "text-black" : "text-white"} text-lg font-semibold mb-4`}>Notification Settings</h1>
@@ -393,7 +385,7 @@ function Settings() {
 
           {/* Email Notification */}
           <div className={`${isLight ? "bg-[#F1F1F1]" : 'bg-[#0A1A3A]'} flex flex-row w-full justify-between px-5 py-3 items-center rounded-xl min-h-12`}>
-            <h1 className={`${isLight ? "text-black" : "text-white" } text-sm text-semibold`}>Email notifications for updates</h1>
+            <h1 className={`${isLight ? "text-black" : "text-white"} text-sm text-semibold`}>Email notifications for updates</h1>
             <div
               onClick={() => setEmailNotificationsEnabled(!emailNotificationEnabled)}
               className={`min-w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300
@@ -431,26 +423,26 @@ function Settings() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="flex flex-col gap-2">
               <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Language</label>
-              <select value={lang} onChange={(e)=>setLang(e.target.value)} className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl`}>
+              <select value={lang} onChange={(e) => setLang(e.target.value)} className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl`}>
                 <option value="en">English</option>
               </select>
             </div>
             <div className="flex flex-col gap-2">
               <label className={`${isLight ? "text-black" : "text-[#9BB3D6]"} text-xs tracking-wider`}>Timezone</label>
-              <input type="text" value={tz} onChange={(e)=>setTz(e.target.value)} className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl`} />
+              <input type="text" value={tz} onChange={(e) => setTz(e.target.value)} className={`${isLight ? "bg-[#F1F1F1] text-black" : "bg-[#0A1A3A] text-white"} px-3 py-2 rounded-xl`} />
             </div>
           </div>
           <div className="flex justify-end">
             <button
-              onClick={async ()=>{
+              onClick={async () => {
                 setPrefsMsg('');
                 setSavingPrefs(true);
-                try{
+                try {
                   const payload = {
-                    preferences:{
+                    preferences: {
                       language: lang,
                       timezone: tz,
-                      notifications:{
+                      notifications: {
                         systemAlerts: notifSystem,
                         messages: notifMessages
                       }
@@ -459,8 +451,8 @@ function Settings() {
                   };
                   const res = await settingsAPI.updateUserSettings(payload);
                   if (res.success) setPrefsMsg('Preferences saved');
-                }catch(e){ setPrefsMsg(e.message||'Failed to save'); }
-                finally{ setSavingPrefs(false); setTimeout(()=>setPrefsMsg(''),2000); }
+                } catch (e) { setPrefsMsg(e.message || 'Failed to save'); }
+                finally { setSavingPrefs(false); setTimeout(() => setPrefsMsg(''), 2000); }
               }}
               disabled={savingPrefs}
               className="px-6 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 text-white font-semibold rounded-lg disabled:opacity-50"
@@ -475,7 +467,7 @@ function Settings() {
       {/* Security Settings */}
       <div className={`${isLight ? "bg-white" : "bg-[#0F2A52]"} p-7 mt-8 rounded-xl md:w-[70%]`}>
         <h1 className={`${isLight ? "text-black" : "text-white"} text-lg font-semibold mb-4`}>Security Settings</h1>
-        
+
         <div className="mb-6">
           <TwoFactorSetup
             isLight={isLight}
@@ -499,26 +491,26 @@ function Settings() {
         <h1 className={`${isLight ? "text-black" : "text-white"} text-lg font-semibold mb-4`}>Privacy</h1>
         <div className="flex flex-col md:flex-row gap-3">
           <button
-            onClick={async ()=>{
-              try{
+            onClick={async () => {
+              try {
                 const res = await settingsAPI.downloadMyData();
-                const blob = new Blob([JSON.stringify(res.data||{},null,2)],{type:'application/json'});
+                const blob = new Blob([JSON.stringify(res.data || {}, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url; a.download = 'motosphere-data.json'; a.click(); URL.revokeObjectURL(url);
-              }catch(e){ alert(e.message||'Failed to prepare data'); }
+              } catch (e) { alert(e.message || 'Failed to prepare data'); }
             }}
             className="px-4 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 text-white rounded-lg"
           >
             Download My Data
           </button>
           <button
-            onClick={async ()=>{
+            onClick={async () => {
               if (!window.confirm('This will schedule your account for deletion. Continue?')) return;
-              try{
+              try {
                 const res = await settingsAPI.deleteAccount();
-                alert(res.message||'Account deletion scheduled');
-              }catch(e){ alert(e.message||'Failed'); }
+                alert(res.message || 'Account deletion scheduled');
+              } catch (e) { alert(e.message || 'Failed'); }
             }}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
           >

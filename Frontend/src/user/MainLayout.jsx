@@ -9,7 +9,7 @@ import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
 import { UsersIcon } from '../component/svg/UsersIcon.jsx';
 import { DevicesIcon } from '../component/svg/DevicesIcon.jsx';
 import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
-import { InfoCircle } from '../component/svg/InfoCircleIcon';
+// Removed InfoCircle import; announcements moved under Notifications → Updates
 
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
@@ -55,7 +55,14 @@ function MainLayout() {
     const lastSynced = "2"
     const isConnected = false
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const [announcements, setAnnouncements] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+
+    // Helper to convert timestamp to "minutes ago" number for Notifications list
+    const minutesAgoFromMillis = (millis) => {
+        if (!millis) return 0;
+        const diffMs = Date.now() - millis;
+        return Math.max(0, Math.floor(diffMs / 60000));
+    };
 
     // Load user data from localStorage on mount and check role
     useEffect(() => {
@@ -131,7 +138,22 @@ function MainLayout() {
         const loadBroadcasts = async () => {
             try{
                 const res = await settingsAPI.getPublicBroadcasts();
-                if (res.success) setAnnouncements(res.broadcasts || []);
+                if (res.success) {
+                    const broadcasts = res.broadcasts || [];
+                    // Map broadcasts into "updates" notifications
+                    const updateNotifs = broadcasts.map(b => ({
+                        type: "updates",
+                        name: b.title || "Update",
+                        description: b.body || "",
+                        time: minutesAgoFromMillis(b.createdAt ? new Date(b.createdAt).getTime() : Date.now())
+                    }));
+                    // Merge with any existing notifications (if any future sources are added)
+                    setNotifications(prev => {
+                        // Keep non-updates from prev, then add latest updates
+                        const others = (prev || []).filter(n => n.type !== 'updates');
+                        return [...others, ...updateNotifs];
+                    });
+                }
             }catch(e){
                 console.warn('Announcements load failed:', e?.message || e);
             }
@@ -168,12 +190,10 @@ function MainLayout() {
         { icon: DashboardIcon, name: "Home", path: "/user/home" },
         { icon: UsersIcon, name: "Contact Persons", path: "/user/contact-persons" },
         { icon: DevicesIcon, name: "Notifications", path: "/user/notifications" },
-        { icon: InfoCircle, name: "Announcements", path: "/user/announcements" },
         { icon: SettingsIcon, name: "Settings", path: "/user/settings" }
     ]
 
-    // Notifications - will be populated from API/database in the future
-    const notifications = [];
+    
 
     const activeButton = buttons.find(
         btn => location.pathname.startsWith(btn.path)
@@ -237,21 +257,7 @@ function MainLayout() {
                 {/* Dito natin inalis ang web-fade-in class para hindi magkaroon ng double animation 
                     kapag ang bata (UserHome) ay may sariling animation na */}
                 <main className="flex-1 p-6 overflow-x-hidden">
-                    {announcements.length > 0 && (
-                        <div className={`${isLight ? "bg-[#E8F4FF] text-black" : "bg-[#0F2A52] text-white"} p-4 rounded-lg mb-4`}>
-                            <div className="font-semibold">{announcements[0].title}</div>
-                            <div className="text-sm opacity-90">{announcements[0].body}</div>
-                            <div className="flex items-center justify-between mt-2">
-                                <div className="text-xs opacity-70">{announcements[0].createdAt ? new Date(announcements[0].createdAt).toLocaleString() : ''}</div>
-                                <button
-                                    onClick={() => { window.location.href = '/user/announcements'; }}
-                                    className={`${isLight ? "text-[#0A1A3A]" : "text-[#2EA8FF]"} text-xs underline`}
-                                >
-                                    View all
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                    {/* Announcements banner removed; updates now appear under Notifications → Updates */}
                     <Outlet context={{
                         username: username,
                         setUsername: setUsername,

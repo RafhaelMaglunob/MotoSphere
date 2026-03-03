@@ -1627,7 +1627,31 @@ router.post('/send-phone-otp', verifyToken, async (req, res) => {
       });
     }
 
-    if (!user.contactNo) {
+    // Allow providing/overriding contactNo in this call (e.g., immediately after SSO)
+    let effectivePhone = user.contactNo || null;
+    const incomingPhone = (req.body && req.body.contactNo) ? String(req.body.contactNo).trim() : null;
+    if (incomingPhone) {
+      // Normalize and validate
+      let normalized = incomingPhone;
+      if (/^09\d{9}$/.test(normalized)) normalized = `+63${normalized.substring(1)}`;
+      if (!/^\+639\d{9}$/.test(normalized)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid phone number. Use +639XXXXXXXXX format'
+        });
+      }
+      // Persist if changed
+      if (normalized !== (user.contactNo || '')) {
+        await admin.firestore().collection('users').doc(userId).set({
+          contactNo: normalized,
+          phoneVerified: false,
+          updatedAt: admin.firestore.Timestamp.now()
+        }, { merge: true });
+      }
+      effectivePhone = normalized;
+    }
+
+    if (!effectivePhone) {
       return res.status(400).json({
         success: false,
         message: 'Phone number not found'
@@ -1654,7 +1678,7 @@ router.post('/send-phone-otp', verifyToken, async (req, res) => {
 
     // Send SMS (or return OTP in dev mode)
     // Ensure phone number has +63 format
-    let phoneNumber = user.contactNo.trim();
+    let phoneNumber = effectivePhone.trim();
     if (!phoneNumber.startsWith('+63')) {
       // If starts with 09, convert to +63
       if (phoneNumber.startsWith('09')) {
