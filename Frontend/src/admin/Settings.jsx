@@ -207,19 +207,7 @@ function Settings() {
                 )}
             </div>
 
-            {/* Notifications */}
-            <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
-                <h2 className="text-xl font-semibold">Notifications</h2>
-                <label className="flex items-center gap-3">
-                    <input
-                        type="checkbox"
-                        checked={notifications}
-                        onChange={() => setNotifications(!notifications)}
-                        className="w-5 h-5 accent-[#2EA8FF]"
-                    />
-                    <span>Enable Email Notifications</span>
-                </label>
-            </div>
+        
 
             {/* Save Button */}
             <div className="flex justify-end">
