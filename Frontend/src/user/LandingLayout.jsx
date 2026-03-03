@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink } from "react-router-dom";
-import { motion, AnimatePresence } from 'framer-motion'; 
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../component/ui/Sidebar';
 import Topbar from '../component/ui/Topbar';
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png';
@@ -54,14 +54,14 @@ function LandingLayout() {
                 {/* Header for desktop */}
                 <div className="md:flex hidden flex-row items-center justify-between px-16 py-4">
                     <div className="flex flex-row items-center gap-2">
-                        <img src={MotoSphere_Logo}  className="w-24 h-24" alt="MotoSphere" />
+                        <img src={MotoSphere_Logo} className="w-24 h-24" alt="MotoSphere" />
                         <h1 className="text-white text-xl font-bold">MotoSphere</h1>
                     </div>
 
                     {/* Staggered Nav Links */}
                     <nav className="flex flex-row md:text-sm gap-8 text-white lg:text-lg font-semibold">
                         {buttons.map((btn, idx) => (
-                            <motion.div
+                            <Motion.div
                                 key={idx}
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -75,23 +75,23 @@ function LandingLayout() {
                                 >
                                     {btn.name}
                                 </NavLink>
-                            </motion.div>
+                            </Motion.div>
                         ))}
                     </nav>
 
                     {/* dropdown animation */}
                     <div ref={dropdownRef} className="flex flex-col relative">
-                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                            <ProfileIcon 
-                                onClick={() => setProfileOpen((prev) => !prev)} 
-                                className="text-white w-8 h-8 cursor-pointer" 
+                        <Motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                            <ProfileIcon
+                                onClick={() => setProfileOpen((prev) => !prev)}
+                                className="text-white w-8 h-8 cursor-pointer"
                             />
-                        </motion.div>
-                        
+                        </Motion.div>
+
                         {/* Animate Presence for the dropdown menu */}
                         <AnimatePresence>
                             {isProfileOpen && (
-                                <motion.div 
+                                <Motion.div
                                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -100,7 +100,7 @@ function LandingLayout() {
                                     <NavLink to="/user-login" className="text-black hover:text-green-500 tracking-wider">
                                         Login
                                     </NavLink>
-                                </motion.div>
+                                </Motion.div>
                             )}
                         </AnimatePresence>
                     </div>
@@ -118,7 +118,7 @@ function LandingLayout() {
                     isMdHidden={true}
                 >
                     <div className="flex justify-center items-center">
-                        <img src={MotoSphere_Logo} alt="MotoSphere Logo" />
+                        <img src={MotoSphere_Logo} className="w-13 h-13 mb-7" alt="MotoSphere Logo" />
                     </div>
                 </Sidebar>
 

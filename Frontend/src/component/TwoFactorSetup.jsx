@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { authAPI } from '../services/api';
 
 function TwoFactorSetup({ isLight, isEnabled, onToggle }) {
   const [loading, setLoading] = useState(false);
   const [qrCode, setQrCode] = useState('');
-  const [secret, setSecret] = useState('');
+  const [_secret, setSecret] = useState('');
   const [backupCodes, setBackupCodes] = useState([]);
   const [verificationToken, setVerificationToken] = useState('');
   const [error, setError] = useState('');

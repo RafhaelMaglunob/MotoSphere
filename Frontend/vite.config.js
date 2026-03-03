@@ -10,4 +10,8 @@ export default defineConfig({
     tailwindcss(),
     svgr()
   ],
+  server: {
+    port: 5173,
+    strictPort: true
+  }
 })

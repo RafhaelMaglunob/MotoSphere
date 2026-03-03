@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { motion } from 'framer-motion' 
+import { motion as Motion } from 'framer-motion' 
 
 export default function AboutUs() {
   return (
@@ -8,27 +8,27 @@ export default function AboutUs() {
       <div className="flex flex-col px-10 gap-4">
         
         {/* Heading animation */}
-        <motion.h1 
+        <Motion.h1 
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="text-white text-4xl md:text-5xl font-bold leading-[1.5]"
         >
           We’re building <br/> safety features for <br/> motorcycle riders
-        </motion.h1>
+        </Motion.h1>
 
         {/* Subtext animation */}
-        <motion.span 
+        <Motion.span 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5, duration: 1 }}
           className="text-[#E2E8F0] text-lg md:text-sm font-light"
         >
           MotoSphere is an attachable smart helmet system designed to <br /> enhance motorcycle safety through innovative technology and <br/> real-time connectivity.
-        </motion.span>
+        </Motion.span>
 
         {/* Our mission button animation */}
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.5 }}
@@ -42,7 +42,7 @@ export default function AboutUs() {
           >
             Our Mission
           </NavLink>
-        </motion.div>
+        </Motion.div>
         
       </div>   
     </div>

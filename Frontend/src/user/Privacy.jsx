@@ -5,26 +5,37 @@ import MotoSphere_logo from '../component/img/MotoSphere Logo.png';
 function Privacy() {
   const navigate = useNavigate();
 
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0E27] text-white p-6">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        { }
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <img src={MotoSphere_logo} alt="MotoSphere" className="w-16 h-16" />
             <h1 className="text-3xl font-bold">Privacy Policy</h1>
           </div>
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="px-4 py-2 bg-[#2EA8FF] hover:bg-[#2EA8FF]/80 rounded-lg transition-colors"
           >
             Back
           </button>
         </div>
 
-        {/* Content */}
+        { }
         <div className="bg-[#0F1729]/90 p-8 rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.15)]">
-          <p className="text-sm text-[#94A3B8] mb-6">Last Updated: {new Date().toLocaleDateString()}</p>
+          <p className="text-sm text-[#94A3B8] mb-6">
+            Last Updated: {new Date().toLocaleDateString()}
+          </p>
 
           <div className="space-y-6 text-[#CCCCCC]">
             <section>
@@ -36,7 +47,7 @@ function Privacy() {
 
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">2. Information We Collect</h2>
-              
+
               <h3 className="text-xl font-semibold text-white mt-4 mb-2">2.1 Personal Information</h3>
               <p>We collect personal information that you provide to us, including:</p>
               <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
@@ -83,7 +94,7 @@ function Privacy() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-3">4. Data Sharing and Disclosure</h2>
               <p>We may share your information in the following circumstances:</p>
-              
+
               <h3 className="text-xl font-semibold text-white mt-4 mb-2">4.1 Emergency Services</h3>
               <p>
                 In the event of an accident or emergency, we may share your location and personal information with:
@@ -91,7 +102,7 @@ function Privacy() {
               <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                 <li>Emergency response services (ambulance, police, fire department)</li>
                 <li>Your designated emergency contacts</li>
-                <li>Medical personnel if necessary</li>
+                <li>Medical personnel if necessary</li>xxx
               </ul>
 
               <h3 className="text-xl font-semibold text-white mt-4 mb-2">4.2 Service Providers</h3>
@@ -231,6 +242,7 @@ function Privacy() {
               By using MotoSphere, you acknowledge that you have read, understood, and agree to this Privacy Policy.
             </p>
           </div>
+
         </div>
       </div>
     </div>

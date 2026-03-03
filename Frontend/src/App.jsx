@@ -18,6 +18,7 @@ import UserHome from "./user/UserHome";
 import UserSettings from "./user/Settings";
 import UserContactPersons from "./user/ContactPersons";
 import UserNotifications from "./user/Notifications";
+import UserAnnouncements from "./user/Announcements";
 import UserRegister from "./user/Register";
 import ForgotPassword from "./user/ForgotPassword";
 import ResetPassword from "./user/ResetPassword";
@@ -76,6 +77,7 @@ function App() {
           <Route path="home" element={<UserHome />} />
           <Route path="contact-persons" element={<UserContactPersons />} />
           <Route path="notifications" element={<UserNotifications />} />
+          <Route path="announcements" element={<UserAnnouncements />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>
         <Route path="mission" element={<Mission />} />

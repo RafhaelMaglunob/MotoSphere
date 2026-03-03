@@ -3,6 +3,7 @@ import { onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, up
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { logAdminChange } from './changeLogger';
+import { settingsAPI, authAPI } from '../services/api';
 
 function Settings() {
     const [adminName, setAdminName] = useState("");
@@ -22,6 +23,18 @@ function Settings() {
     const [passwordSuccess, setPasswordSuccess] = useState("");
 
     const [currentUid, setCurrentUid] = useState(null);
+    const [systemSettings, setSystemSettings] = useState({
+        userManagement: { defaultRole: 'user', allowRegistration: true, requireEmailVerification: true },
+        securityPolicies: { passwordMinLength: 8, requireNumber: true, requireSymbol: true, sessionTimeoutMinutes: 60, requireAdmin2FA: false },
+        systemConfig: { appName: 'MotoSphere', logoUrl: '', maintenanceMode: false, defaultTheme: 'dark', systemTimezone: 'UTC' },
+        logsMonitoring: { logRetentionDays: 30, activityTracking: true }
+    });
+    const [loadingSys, setLoadingSys] = useState(false);
+    const [savingSys, setSavingSys] = useState(false);
+    const [broadcastTitle, setBroadcastTitle] = useState('');
+    const [broadcastBody, setBroadcastBody] = useState('');
+    const [broadcasts, setBroadcasts] = useState([]);
+    const [loadingBroadcasts, setLoadingBroadcasts] = useState(false);
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (user) => {
@@ -68,9 +81,7 @@ function Settings() {
         return !!currentUid && !loadingProfile && adminName.trim().length > 0;
     }, [currentUid, loadingProfile, adminName]);
 
-    const handleSave = () => {
-        // Keep for backward compat — actual save happens below
-    };
+    // removed unused handleSave placeholder
 
     const handleSaveProfile = async () => {
         if (!canSaveProfile) return;
@@ -167,6 +178,59 @@ function Settings() {
         }
     };
 
+    useEffect(() => {
+        const loadSystem = async () => {
+            try {
+                setLoadingSys(true);
+                // Ensure backend admin token is present by exchanging Firebase ID token
+                try {
+                    const current = auth.currentUser;
+                    if (current) {
+                        const idToken = await current.getIdToken();
+                        const res = await authAPI.adminExchangeFirebase(idToken);
+                        if (res.success && res.token) {
+                            localStorage.setItem('token', res.token);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Admin token exchange failed:', e?.message || e);
+                }
+                const res = await settingsAPI.getAdminSettings();
+                if (res.success && res.settings) {
+                    setSystemSettings(prev => ({ ...prev, ...res.settings }));
+                }
+                try {
+                    setLoadingBroadcasts(true);
+                    const b = await settingsAPI.getAdminBroadcasts(50);
+                    if (b.success) setBroadcasts(b.broadcasts || []);
+                } finally {
+                    setLoadingBroadcasts(false);
+                }
+            } catch (e) {
+                console.error('Failed to load system settings:', e);
+            } finally {
+                setLoadingSys(false);
+            }
+        };
+        loadSystem();
+    }, []);
+
+    const saveSystemSettings = async () => {
+        try {
+            setSavingSys(true);
+            const res = await settingsAPI.updateAdminSettings(systemSettings);
+            if (res.success) {
+                alert('System settings saved');
+            } else {
+                alert(res.message || 'Failed to save');
+            }
+        } catch (e) {
+            alert(e.message || 'Failed to save');
+        } finally {
+            setSavingSys(false);
+        }
+    };
+
     return (
         <div className="p-8 flex flex-col gap-6 text-white bg-[#0F2A52] h-fit rounded-2xl relative">
             <h1 className="text-2xl font-bold">Admin Settings</h1>
@@ -178,36 +242,48 @@ function Settings() {
                     <div className="text-[#9BB3D6] text-sm">Loading profile...</div>
                 ) : (
                     <>
-                <input
-                    type="text"
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    placeholder="Admin Name"
-                    className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none focus:ring-2 focus:ring-[#2EA8FF]"
-                />
-                <input
-                    type="email"
-                    value={adminEmail}
-                    readOnly
-                    placeholder="Admin Email"
-                    className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none opacity-80"
-                />
-                <div className="text-xs text-[#9BB3D6]">
-                    Role: <span className="text-white font-semibold capitalize">{role || 'admin'}</span>
-                </div>
+                        <input
+                            type="text"
+                            value={adminName}
+                            onChange={(e) => setAdminName(e.target.value)}
+                            placeholder="Admin Name"
+                            className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none focus:ring-2 focus:ring-[#2EA8FF]"
+                        />
+                        <input
+                            type="email"
+                            value={adminEmail}
+                            readOnly
+                            placeholder="Admin Email"
+                            className="px-4 py-2 rounded-lg bg-[#0F2A52] border border-gray-600 outline-none opacity-80"
+                        />
+                        <div className="text-xs text-[#9BB3D6]">
+                            Role: <span className="text-white font-semibold capitalize">{role || 'admin'}</span>
+                        </div>
 
-                {/* Change Password Button */}
-                <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="mt-2 px-4 py-2 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] w-max font-medium"
-                >
-                    Change Password
-                </button>
+                        {/* Change Password Button */}
+                        <button
+                            onClick={() => setShowPasswordModal(true)}
+                            className="mt-2 px-4 py-2 bg-[#2EA8FF] rounded-lg hover:bg-[#2596e6] w-max font-medium"
+                        >
+                            Change Password
+                        </button>
                     </>
                 )}
             </div>
 
-        
+            {/* Notifications */}
+            <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
+                <h2 className="text-xl font-semibold">Notifications</h2>
+                <label className="flex items-center gap-3">
+                    <input
+                        type="checkbox"
+                        checked={notifications}
+                        onChange={() => setNotifications(!notifications)}
+                        className="w-5 h-5 accent-[#2EA8FF]"
+                    />
+                    <span>Enable Email Notifications</span>
+                </label>
+            </div>
 
             {/* Save Button */}
             <div className="flex justify-end">

@@ -61,6 +61,7 @@ import express from 'express';
 import cors from 'cors';
 import './config/firebase.js'; // Initialize Firebase
 import authRoutes from './routes/auth.js';
+import settingsRoutes from './routes/settings.js';
 import { verifyToken } from './middleware/auth.js';
 
 const app = express();
@@ -76,6 +77,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api', settingsRoutes);
 
 // Protected route example
 app.get('/api/protected', verifyToken, (req, res) => {

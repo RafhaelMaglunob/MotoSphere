@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate, Navigate } from "react-router-dom";
 import Sidebar from '../component/ui/Sidebar'
 import Topbar from '../component/ui/Topbar'
-import { authAPI } from '../services/api';
+import { authAPI, settingsAPI } from '../services/api';
 
 import MotoSphere_Logo from '../component/img/MotoSphere Logo.png'
 import { DashboardIcon } from '../component/svg/DashboardIcon.jsx';
 import { UsersIcon } from '../component/svg/UsersIcon.jsx';
 import { DevicesIcon } from '../component/svg/DevicesIcon.jsx';
 import { SettingsIcon } from '../component/svg/SettingsIcon.jsx';
+// Removed InfoCircle import; announcements moved under Notifications → Updates
 
 import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
@@ -34,12 +35,34 @@ function MainLayout() {
     const navigate = useNavigate();
     const [showSidebar, setShowSidebar] = useState(false);
     const location = useLocation();
-    const [username, setUsername] = useState("")
-    const [email, setEmail] = useState("")
+    const initialUser = (() => {
+        try {
+            const s = localStorage.getItem("user");
+            if (!s) return { username: "", email: "" };
+            const u = JSON.parse(s);
+            return {
+                username: u?.username || "",
+                email: u?.email || ""
+            };
+        } catch {
+            return { username: "", email: "" };
+        }
+    })();
+    const [username, setUsername] = useState(initialUser.username)
+    const [email, setEmail] = useState(initialUser.email)
     const [contacts, setContacts] = useState([])
     const deviceNo = "MK-II"
     const lastSynced = "2"
     const isConnected = false
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+
+    // Helper to convert timestamp to "minutes ago" number for Notifications list
+    const minutesAgoFromMillis = (millis) => {
+        if (!millis) return 0;
+        const diffMs = Date.now() - millis;
+        return Math.max(0, Math.floor(diffMs / 60000));
+    };
 
     // Load user data from localStorage on mount and check role
     useEffect(() => {
@@ -60,9 +83,6 @@ function MainLayout() {
                 navigate('/admin/dashboard', { replace: true });
                 return;
             }
-
-            setUsername(user.username || "");
-            setEmail(user.email || "");
 
             // Refresh user data from server to get latest profile picture
             const refreshUserData = async () => {
@@ -108,28 +128,57 @@ function MainLayout() {
         }
     }, []);
 
+    // Persist theme preference (must run unconditionally before any early returns)
+    useEffect(() => {
+        localStorage.setItem("isLight", JSON.stringify(isLight));
+    }, [isLight]);
+
+    // Load public broadcasts for signed-in users (via backend API)
+    useEffect(() => {
+        const loadBroadcasts = async () => {
+            try{
+                const res = await settingsAPI.getPublicBroadcasts();
+                if (res.success) {
+                    const broadcasts = res.broadcasts || [];
+                    // Map broadcasts into "updates" notifications
+                    const updateNotifs = broadcasts.map(b => ({
+                        type: "updates",
+                        name: b.title || "Update",
+                        description: b.body || "",
+                        time: minutesAgoFromMillis(b.createdAt ? new Date(b.createdAt).getTime() : Date.now())
+                    }));
+                    // Merge with any existing notifications (if any future sources are added)
+                    setNotifications(prev => {
+                        // Keep non-updates from prev, then add latest updates
+                        const others = (prev || []).filter(n => n.type !== 'updates');
+                        return [...others, ...updateNotifs];
+                    });
+                }
+            }catch(e){
+                console.warn('Announcements load failed:', e?.message || e);
+            }
+        };
+        const token = localStorage.getItem("token");
+        if (token) loadBroadcasts();
+    }, []);
     // Check if user is authenticated and not admin
     const userData = localStorage.getItem("user");
     const token = localStorage.getItem("token");
-
     if (!token || !userData) {
         return <Navigate to="/user-login" replace />;
     }
-
     let user;
     try {
         user = JSON.parse(userData);
-        // If admin, redirect to admin dashboard
-        if (user.role === 'admin') {
-            return <Navigate to="/admin/dashboard" replace />;
-        }
-    } catch (error) {
+    } catch {
+        user = null;
+    }
+    if (!user) {
         return <Navigate to="/user-login" replace />;
     }
-
-    useEffect(() => {
-        localStorage.setItem("isLight", JSON.stringify(isLight));
-    }, [isLight])
+    if (user.role === 'admin') {
+        return <Navigate to="/admin/dashboard" replace />;
+    }
 
     const sensors = [
         { type: "Accelerometer", connection: "Active" },
@@ -144,14 +193,12 @@ function MainLayout() {
         { icon: SettingsIcon, name: "Settings", path: "/user/settings" }
     ]
 
-    // Notifications - will be populated from API/database in the future
-    const notifications = [];
+    
 
     const activeButton = buttons.find(
         btn => location.pathname.startsWith(btn.path)
     )?.name;
 
-    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const handleLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -179,7 +226,7 @@ function MainLayout() {
                 footer={footer}
             >
                 <div className="flex flex-col items-center mb-7 p-3">
-                    <img src={MotoSphere_Logo} className="w-24 h-24 mb-2" alt="MotoSphere Logo" />
+                    <img src={MotoSphere_Logo} className="w-16 h-16 object-contain mb-2" alt="MotoSphere Logo" />
                     <h1 className={`text-lg font-bold ${isLight ? "text-black" : "text-white"}`}>MotoSphere</h1>
                 </div>
             </Sidebar>
@@ -210,6 +257,7 @@ function MainLayout() {
                 {/* Dito natin inalis ang web-fade-in class para hindi magkaroon ng double animation 
                     kapag ang bata (UserHome) ay may sariling animation na */}
                 <main className="flex-1 p-6 overflow-x-hidden">
+                    {/* Announcements banner removed; updates now appear under Notifications → Updates */}
                     <Outlet context={{
                         username: username,
                         setUsername: setUsername,
