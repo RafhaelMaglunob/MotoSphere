@@ -183,18 +183,43 @@ export const getDashboardStats = async () => {
 };
 
 export const getRecentAlerts = async (limitCount = 5) => {
+  const alertsRef = collection(db, 'alerts');
+  const timeFields = ['time_of_occurrence', 'time_of_occurence', 'createdAt', 'timestamp', 'date'];
   try {
-    const alertsRef = collection(db, 'alerts');
-    const q = query(
-      alertsRef, 
-      orderBy('time_of_occurrence', 'desc'), 
-      limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    for (const timeField of timeFields) {
+      try {
+        const q = query(
+          alertsRef,
+          orderBy(timeField, 'desc'),
+          limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (orderErr) {
+        if (orderErr?.code === 'failed-precondition' || orderErr?.message?.includes('index')) continue;
+        throw orderErr;
+      }
+    }
+  } catch (_) {
+    // Fallback: fetch all alerts and sort in memory (no index required)
+  }
+  try {
+    const snapshot = await getDocs(alertsRef);
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const getTime = (d) => {
+      const t = d.time_of_occurrence ?? d.time_of_occurence ?? d.createdAt ?? d.timestamp ?? d.date;
+      if (!t) return 0;
+      if (t.toDate) return t.toDate().getTime();
+      if (t.seconds) return t.seconds * 1000;
+      if (t instanceof Date) return t.getTime();
+      if (typeof t === 'number') return t;
+      return 0;
+    };
+    docs.sort((a, b) => getTime(b) - getTime(a));
+    return docs.slice(0, limitCount);
   } catch (error) {
     console.error('Error fetching recent alerts:', error);
     throw error;
@@ -216,6 +241,48 @@ export const getSystemActivity = async (limitCount = 5) => {
     }));
   } catch (error) {
     console.error('Error fetching system activity:', error);
+    throw error;
+  }
+};
+
+/**
+ * System activity from changelogs (admin actions). Use this when systemActivity
+ * collection is empty so the dashboard shows real recent activity.
+ */
+export const getSystemActivityFromChangelogs = async (limitCount = 5) => {
+  try {
+    const logsRef = collection(db, 'changelogs');
+    let snapshot;
+    try {
+      const q = query(
+        logsRef,
+        orderBy('date', 'desc'),
+        limit(limitCount)
+      );
+      snapshot = await getDocs(q);
+    } catch (orderErr) {
+      if (orderErr?.code === 'failed-precondition' || orderErr?.message?.includes('index')) {
+        const all = await getDocs(logsRef);
+        const docs = all.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const getTime = (d) => {
+          const t = d.date ?? d.createdAt ?? d.timestamp;
+          if (!t) return 0;
+          if (t.toDate) return t.toDate().getTime();
+          if (t.seconds) return t.seconds * 1000;
+          if (t instanceof Date) return t.getTime();
+          return 0;
+        };
+        docs.sort((a, b) => getTime(b) - getTime(a));
+        return docs.slice(0, limitCount).map(d => ({ id: d.id, ...d }));
+      }
+      throw orderErr;
+    }
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error fetching system activity from changelogs:', error);
     throw error;
   }
 };

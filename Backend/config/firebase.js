@@ -1,13 +1,23 @@
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Explicitly load "env" (no extension) from the Backend root so we don't rely
+// on the current working directory. This matches the actual file name.
+const envPath = join(__dirname, '..', 'env');
+dotenv.config({ path: envPath });
+
+// Helpful one‑time debug output on startup
+if (process.env.NODE_ENV !== 'production') {
+  console.log('📁 Firebase env path:', envPath);
+  console.log('   Env file exists:', existsSync(envPath));
+  console.log('   FIREBASE_PROJECT_ID set:', !!process.env.FIREBASE_PROJECT_ID);
+}
 
 // Initialize Firebase Admin SDK
 let firebaseApp;

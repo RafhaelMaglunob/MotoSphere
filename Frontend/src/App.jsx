@@ -15,6 +15,7 @@ import SetupAdmin from "./admin/SetupAdmin";
 import UserLogin from "./user/Login";
 import UserLayout from "./user/MainLayout";
 import UserHome from "./user/UserHome";
+import UserDevice from "./user/UserDevice";
 import UserSettings from "./user/Settings";
 import UserContactPersons from "./user/ContactPersons";
 import UserNotifications from "./user/Notifications";
@@ -75,6 +76,7 @@ function App() {
         {/* User Routes */}
         <Route path="/user" element={<UserLayout />}>
           <Route path="home" element={<UserHome />} />
+          <Route path="device" element={<UserDevice />} />
           <Route path="contact-persons" element={<UserContactPersons />} />
           <Route path="notifications" element={<UserNotifications />} />
           <Route path="announcements" element={<UserAnnouncements />} />

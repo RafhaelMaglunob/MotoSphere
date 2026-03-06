@@ -6,25 +6,26 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env file from Backend directory
-const envPath = path.join(__dirname, '.env');
+// Load env config file from Backend directory.
+// The template here uses a file named "env" (no extension).
+const envPath = path.join(__dirname, 'env');
 
-// Check if .env file exists
+// Check if env file exists
 if (fs.existsSync(envPath)) {
   const result = dotenv.config({ path: envPath });
   if (result.error) {
-    console.error('❌ Error loading .env file:', result.error);
+    console.error('❌ Error loading env config file:', result.error);
   } else {
-    console.log('✅ .env file loaded from:', envPath);
+    console.log('✅ Env config file loaded from:', envPath);
   }
 } else {
-  console.warn('⚠️  .env file not found at:', envPath);
+  console.warn('⚠️  Env config file not found at:', envPath);
 }
 
 // Debug: Log if Gmail credentials are loaded (only in development)
 if (process.env.NODE_ENV !== 'production') {
   console.log('📧 Gmail config check on startup:');
-  console.log('   .env path:', envPath);
+  console.log('   Env path:', envPath);
   console.log('   File exists:', fs.existsSync(envPath));
   
   // Try to read the file directly to debug

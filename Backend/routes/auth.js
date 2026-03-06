@@ -315,14 +315,14 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create new user
+    // Create new user - default role is 'rider'
     const user = await User.create({
       username: usernameValidation.username,
       email: emailValidation.email,
       contactNo,
       address: address.trim(),
       password,
-      role: 'user',
+      role: 'rider',
       termsAccepted: true,
       emailVerified: false, // Email verification required
       phoneVerified: false, // Phone verification required

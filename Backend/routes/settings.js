@@ -4,9 +4,62 @@ import crypto from 'crypto';
 import bcryptjs from 'bcryptjs';
 import { verifyToken, verifyAdmin } from '../middleware/auth.js';
 import { db } from '../config/firebase.js';
-import { sendAlertNotificationEmail } from '../services/emailService.js';
+import { sendAlertNotificationEmail, sendSystemAlertEmail } from '../services/emailService.js';
+import { connectDevice, disconnectDevice, getDeviceStatus } from '../services/raspberryPiService.js';
 
 const router = express.Router();
+
+// ------------------------------------------------------------
+// Device routes (mounted under /api via server.js)
+// These are defined here (in addition to routes/device.js) so they work even
+// if a different server entrypoint only mounts settingsRoutes.
+// ------------------------------------------------------------
+
+// GET /api/device/ping (no auth) - quick sanity check
+router.get('/device/ping', (req, res) => {
+  res.json({ success: true, message: 'device routes mounted' });
+});
+
+// GET /api/device/status
+router.get('/device/status', verifyToken, async (req, res) => {
+  try {
+    const status = await getDeviceStatus();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    res.status(502).json({
+      success: false,
+      message: `Failed to reach Raspberry Pi device service: ${error.message}`,
+    });
+  }
+});
+
+// POST /api/device/connect
+router.post('/device/connect', verifyToken, async (req, res) => {
+  try {
+    const { deviceId } = req.body || {};
+    const data = await connectDevice({ userId: req.user?.id, deviceId });
+    res.json({ success: true, ...data });
+  } catch (error) {
+    res.status(502).json({
+      success: false,
+      message: `Failed to connect via Raspberry Pi device service: ${error.message}`,
+    });
+  }
+});
+
+// POST /api/device/disconnect
+router.post('/device/disconnect', verifyToken, async (req, res) => {
+  try {
+    const { deviceId } = req.body || {};
+    const data = await disconnectDevice({ userId: req.user?.id, deviceId });
+    res.json({ success: true, ...data });
+  } catch (error) {
+    res.status(502).json({
+      success: false,
+      message: `Failed to disconnect via Raspberry Pi device service: ${error.message}`,
+    });
+  }
+});
 
 const readUserSettings = (user) => {
   const prefs = user.preferences || {};
@@ -39,6 +92,36 @@ router.get('/user/settings', verifyToken, async (req, res) => {
     res.json({ success: true, settings: readUserSettings(data) });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message || 'Failed to load settings' });
+  }
+});
+
+// POST /api/user/notifications/send-system-alert — send changelog-style alert to current user's email if System Alerts enabled
+router.post('/user/notifications/send-system-alert', verifyToken, async (req, res) => {
+  try {
+    const { summary, changes, actorName, actorEmail } = req.body || {};
+    const userSnap = await db.collection('users').doc(req.user.id).get();
+    if (!userSnap.exists) return res.status(404).json({ success: false, message: 'User not found' });
+    const user = userSnap.data() || {};
+    const prefs = user.preferences || {};
+    const notif = prefs.notifications || {};
+    if (notif.systemAlerts === false) {
+      return res.json({ success: true, skipped: true, message: 'System alerts disabled; email not sent' });
+    }
+    const toEmail = user.email || req.user.email;
+    if (!toEmail) {
+      return res.status(400).json({ success: false, message: 'No email address for user' });
+    }
+    await sendSystemAlertEmail(toEmail, {
+      summary: summary || 'System update',
+      changes: Array.isArray(changes) ? changes : (summary ? [summary] : []),
+      actorName: actorName || null,
+      actorEmail: actorEmail || null,
+      date: new Date()
+    });
+    res.json({ success: true, message: 'System alert email sent' });
+  } catch (e) {
+    console.error('Send system alert error:', e);
+    res.status(500).json({ success: false, message: e.message || 'Failed to send system alert email' });
   }
 });
 

@@ -4,14 +4,26 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { logAdminChange } from './changeLogger';
 import { settingsAPI, authAPI } from '../services/api';
+import ProfilePictureUpload from '../component/ProfilePictureUpload';
+import TwoFactorSetup from '../component/TwoFactorSetup';
 
 function Settings() {
     const [adminName, setAdminName] = useState("");
     const [adminEmail, setAdminEmail] = useState("");
     const [role, setRole] = useState("");
+    const [profilePicture, setProfilePicture] = useState("");
+    const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [savingProfile, setSavingProfile] = useState(false);
     const [notifications, setNotifications] = useState(true);
+
+    // Notification preferences (same shape as user settings)
+    const [notifSystem, setNotifSystem] = useState(true);
+    const [notifMessages, setNotifMessages] = useState(true);
+    const [lang, setLang] = useState('en');
+    const [tz, setTz] = useState('UTC');
+    const [savingPrefs, setSavingPrefs] = useState(false);
+    const [prefsMsg, setPrefsMsg] = useState('');
 
     // Modal state
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -57,6 +69,8 @@ function Settings() {
                     const data = snap.data();
                     setAdminName(data.name || data.username || (user.email ? user.email.split('@')[0] : "Admin"));
                     setRole(data.role || "admin");
+                    if (data.profilePicture) setProfilePicture(data.profilePicture);
+                    if (typeof data.twoFactorEnabled === "boolean") setTwoFactorEnabled(data.twoFactorEnabled);
                     if (typeof data.notifications === "boolean") {
                         setNotifications(data.notifications);
                     }
@@ -107,6 +121,16 @@ function Settings() {
                     notificationsEnabled: notifications,
                 },
             });
+            try {
+                await settingsAPI.sendSystemAlert({
+                    summary: `Admin updated their profile/settings.`,
+                    changes: [`Admin updated their profile/settings.`],
+                    actorName: adminName,
+                    actorEmail: adminEmail,
+                });
+            } catch (emailErr) {
+                console.warn('System alert email skipped or failed:', emailErr);
+            }
             alert("Settings saved successfully!");
         } catch (e) {
             console.error("Failed to save settings:", e);
@@ -195,6 +219,19 @@ function Settings() {
                 } catch (e) {
                     console.warn('Admin token exchange failed:', e?.message || e);
                 }
+                try {
+                    const sres = await settingsAPI.getUserSettings();
+                    if (sres.success && sres.settings) {
+                        const p = sres.settings.preferences || {};
+                        const n = p.notifications || {};
+                        setLang(p.language || 'en');
+                        setTz(p.timezone || 'UTC');
+                        setNotifSystem(n.systemAlerts !== false);
+                        setNotifMessages(n.messages !== false);
+                    }
+                } catch (e) {
+                    console.warn('Admin user settings load failed:', e?.message || e);
+                }
                 const res = await settingsAPI.getAdminSettings();
                 if (res.success && res.settings) {
                     setSystemSettings(prev => ({ ...prev, ...res.settings }));
@@ -260,6 +297,23 @@ function Settings() {
                             Role: <span className="text-white font-semibold capitalize">{role || 'admin'}</span>
                         </div>
 
+                        {/* Profile Picture */}
+                        <div className="flex flex-col gap-2">
+                            <ProfilePictureUpload
+                                currentPicture={profilePicture}
+                                onUploadSuccess={async (url) => {
+                                    setProfilePicture(url);
+                                    try {
+                                        const ref = doc(db, 'users', currentUid);
+                                        await updateDoc(ref, { profilePicture: url, updatedAt: new Date() });
+                                    } catch (e) {
+                                        console.warn('Failed to sync profile picture to Firestore:', e);
+                                    }
+                                }}
+                                isLight={false}
+                            />
+                        </div>
+
                         {/* Change Password Button */}
                         <button
                             onClick={() => setShowPasswordModal(true)}
@@ -271,20 +325,69 @@ function Settings() {
                 )}
             </div>
 
-            {/* Notifications */}
+            {/* Notification Settings */}
             <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
-                <h2 className="text-xl font-semibold">Notifications</h2>
-                <label className="flex items-center gap-3">
-                    <input
-                        type="checkbox"
-                        checked={notifications}
-                        onChange={() => setNotifications(!notifications)}
-                        className="w-5 h-5 accent-[#2EA8FF]"
-                    />
-                    <span>Enable Email Notifications</span>
-                </label>
+                <h2 className="text-xl font-semibold">Notification Settings</h2>
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-row w-full justify-between px-5 py-3 items-center rounded-xl min-h-12 bg-[#0F2A52]">
+                        <span className="text-white text-sm font-medium">System alerts</span>
+                        <div
+                            onClick={() => setNotifSystem(!notifSystem)}
+                            className={`min-w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${notifSystem ? "bg-gray-600" : "bg-[#2EA8FF]"}`}
+                        >
+                            <div className={`bg-white w-5 h-5 rounded-full shadow-md transform duration-300 ${notifSystem ? "translate-x-0" : "translate-x-7"}`} />
+                        </div>
+                    </div>
+                   
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={async () => {
+                                setPrefsMsg('');
+                                setSavingPrefs(true);
+                                try {
+                                    const payload = {
+                                        preferences: {
+                                            language: lang,
+                                            timezone: tz,
+                                            notifications: { systemAlerts: notifSystem, messages: notifMessages }
+                                        }
+                                    };
+                                    const res = await settingsAPI.updateUserSettings(payload);
+                                    if (res.success) setPrefsMsg('Preferences saved');
+                                    else setPrefsMsg(res.message || 'Failed to save');
+                                } catch (e) {
+                                    setPrefsMsg(e.message || 'Failed to save');
+                                } finally {
+                                    setSavingPrefs(false);
+                                    setTimeout(() => setPrefsMsg(''), 2000);
+                                }
+                            }}
+                            disabled={savingPrefs}
+                            className="px-6 py-2 bg-[#2EA8FF] hover:bg-[#2596e6] text-white font-semibold rounded-lg disabled:opacity-50"
+                        >
+                            {savingPrefs ? 'Saving...' : 'Save Preferences'}
+                        </button>
+                        {prefsMsg && <span className="text-sm text-green-400">{prefsMsg}</span>}
+                    </div>
+                </div>
             </div>
 
+            {/* Security Settings — 2FA */}
+            <div className="bg-[#0A1A3A] p-6 rounded-lg flex flex-col gap-4">
+                <h2 className="text-xl font-semibold">Security Settings</h2>
+                <TwoFactorSetup
+                    isLight={false}
+                    isEnabled={twoFactorEnabled}
+                    onToggle={(enabled) => {
+                        setTwoFactorEnabled(enabled);
+                        if (currentUid) {
+                            const ref = doc(db, 'users', currentUid);
+                            updateDoc(ref, { twoFactorEnabled: enabled, updatedAt: new Date() }).catch(e => console.warn('Failed to sync 2FA state:', e));
+                        }
+                    }}
+                />
+            </div>
+            
             {/* Save Button */}
             <div className="flex justify-end">
                 <button

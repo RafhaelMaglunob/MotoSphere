@@ -303,12 +303,30 @@ export const authAPI = {
 
 export default apiCall;
 
+export const deviceAPI = {
+  status: async () => {
+    return apiCall('/device/status', { method: 'GET' });
+  },
+  connect: async (deviceId) => {
+    return apiCall('/device/connect', { method: 'POST', body: JSON.stringify(deviceId ? { deviceId } : {}) });
+  },
+  disconnect: async (deviceId) => {
+    return apiCall('/device/disconnect', { method: 'POST', body: JSON.stringify(deviceId ? { deviceId } : {}) });
+  },
+};
+
 export const settingsAPI = {
   getUserSettings: async () => {
     return apiCall('/user/settings', { method: 'GET' });
   },
   updateUserSettings: async (payload) => {
     return apiCall('/user/settings', { method: 'PATCH', body: JSON.stringify(payload) });
+  },
+  sendSystemAlert: async ({ summary, changes, actorName, actorEmail } = {}) => {
+    return apiCall('/user/notifications/send-system-alert', {
+      method: 'POST',
+      body: JSON.stringify({ summary, changes, actorName, actorEmail }),
+    });
   },
   getSessions: async () => {
     return apiCall('/user/settings/sessions', { method: 'GET' });

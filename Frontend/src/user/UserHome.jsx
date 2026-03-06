@@ -12,6 +12,18 @@ function UserHome() {
     const { username, deviceNo, lastSynced, isConnected, sensors, contacts, isLight } = useOutletContext();
     const firstName = username?.trim().split(/\s+/)[0];
     
+    // Separate sensors into motion sensors (accelerometer & gyroscope) and other sensors
+    const motionSensors = sensors.filter(sensor => 
+        sensor.type.toLowerCase() === 'accelerometer' || sensor.type.toLowerCase() === 'gyroscope'
+    );
+    const otherSensors = sensors.filter(sensor => 
+        sensor.type.toLowerCase() !== 'accelerometer' && sensor.type.toLowerCase() !== 'gyroscope'
+    );
+    
+    // Check if all motion sensors are active
+    const allMotionSensorsActive = motionSensors.length > 0 && 
+        motionSensors.every(sensor => sensor?.connection.toLowerCase() === "active");
+    
     return (
         <div>
             <div className="md:py-3 md:px-10">
@@ -41,7 +53,8 @@ function UserHome() {
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-5 grid grid-cols-2 gap-2 items-stretch">
+                        <div className="mt-5 grid grid-cols-3 gap-2 items-stretch">
+                            {/* Battery */}
                             <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} flex-1 p-4 rounded-lg flex flex-col`}>
                                 <div className={`${isLight ? "text-black" : "text-[#9BB3D6]"} flex flex-row items-center gap-3`}>
                                     <BatteryIcon className="w-4 h-4" />
@@ -49,7 +62,22 @@ function UserHome() {
                                 </div>
                                 <h1 className={`${isLight ? "text-black" : "text-white"} mt-4 font-medium text-lg`}>94%</h1>
                             </div>
-                            {sensors.map((sensor, index) => (
+                            
+                            {/* Combined Motion Sensors (Accelerometer & Gyroscope) */}
+                            {motionSensors.length > 0 && (
+                                <div className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} flex-1 p-4 rounded-lg flex flex-col`}>
+                                    <div className={`${isLight ? "text-black" : "text-[#9BB3D6]"} flex flex-row items-center gap-3`}>
+                                        <BatteryIcon className="w-4 h-4" />
+                                        <label className="text-sm">Motion Sensors</label>
+                                    </div>
+                                    <h1 className={`mt-4 font-medium text-lg ${allMotionSensorsActive ? "text-[#4EBC34]" : "text-red-600"}`}>
+                                        {allMotionSensorsActive ? "Active" : "Inactive"}
+                                    </h1>
+                                </div>
+                            )}
+                            
+                            {/* Other sensors */}
+                            {otherSensors.map((sensor, index) => (
                                 <div key={index} className={`${isLight ? "bg-[#F1F1F1]" : "bg-[#0F2A52]"} flex-1 p-4 rounded-lg flex flex-col`}>
                                     <div className={`${isLight ? "text-black" : "text-[#9BB3D6]"} flex flex-row items-center gap-3`}>
                                         <BatteryIcon className="w-4 h-4" />

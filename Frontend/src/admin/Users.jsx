@@ -3,6 +3,7 @@ import { collection, getDocs, getDoc, doc, updateDoc, setDoc, deleteDoc, Timesta
 import { db } from './firebase';
 import { auth } from './firebase';
 import { logAdminChange } from './changeLogger';
+import { settingsAPI } from '../services/api';
 
 function formatTimeAgo(secondsAgo) {
     if (secondsAgo < 60) return `${secondsAgo} sec${secondsAgo !== 1 ? "s" : ""} ago`;
@@ -406,6 +407,7 @@ function Users() {
 
             // Log change
             if (currentAdmin) {
+                const summary = `Admin updated user "${formData.name}" (${formData.email}).`;
                 await logAdminChange({
                     actorId: currentAdmin.uid,
                     actorEmail: currentAdmin.email,
@@ -413,7 +415,7 @@ function Users() {
                     action: 'user_updated',
                     targetType: 'user',
                     targetId: userId,
-                    summary: `Admin updated user "${formData.name}" (${formData.email}).`,
+                    summary,
                     metadata: {
                         userId,
                         name: formData.name,
@@ -421,6 +423,14 @@ function Users() {
                         status: formData.status,
                     },
                 });
+                try {
+                    await settingsAPI.sendSystemAlert({
+                        summary,
+                        changes: [summary],
+                        actorName: currentAdmin.displayName,
+                        actorEmail: currentAdmin.email,
+                    });
+                } catch (e) { console.warn('System alert email failed:', e); }
             }
             await loadUsers();
             setSelectedUser(null);
@@ -465,6 +475,7 @@ function Users() {
 
             // Log delete
             if (currentAdmin) {
+                const summary = `Admin deleted user "${fullUser.name || rowUser?.name || fullUser.email || 'Unknown'}" (${fullUser.email || rowUser?.email || 'no-email'}).`;
                 await logAdminChange({
                     actorId: currentAdmin.uid,
                     actorEmail: currentAdmin.email,
@@ -472,13 +483,21 @@ function Users() {
                     action: 'user_deleted',
                     targetType: 'user',
                     targetId: userId,
-                    summary: `Admin deleted user "${fullUser.name || rowUser?.name || fullUser.email || 'Unknown'}" (${fullUser.email || rowUser?.email || 'no-email'}).`,
+                    summary,
                     metadata: {
                         userId,
                         name: fullUser.name || rowUser?.name || null,
                         email: fullUser.email || rowUser?.email || null,
                     },
                 });
+                try {
+                    await settingsAPI.sendSystemAlert({
+                        summary,
+                        changes: [summary],
+                        actorName: currentAdmin.displayName,
+                        actorEmail: currentAdmin.email,
+                    });
+                } catch (e) { console.warn('System alert email failed:', e); }
             }
 
             // Reload lists so the archived modal immediately reflects the change
@@ -511,6 +530,7 @@ function Users() {
 
             // Log restore
             if (currentAdmin) {
+                const summary = `Admin restored user "${archived.name}" (${archived.email}).`;
                 await logAdminChange({
                     actorId: currentAdmin.uid,
                     actorEmail: currentAdmin.email,
@@ -518,13 +538,21 @@ function Users() {
                     action: 'user_restored',
                     targetType: 'user',
                     targetId: userId,
-                    summary: `Admin restored user "${archived.name}" (${archived.email}).`,
+                    summary,
                     metadata: {
                         userId,
                         name: archived.name,
                         email: archived.email,
                     },
                 });
+                try {
+                    await settingsAPI.sendSystemAlert({
+                        summary,
+                        changes: [summary],
+                        actorName: currentAdmin.displayName,
+                        actorEmail: currentAdmin.email,
+                    });
+                } catch (e) { console.warn('System alert email failed:', e); }
             }
 
             await Promise.all([loadUsers(), loadArchivedUsers()]);

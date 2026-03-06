@@ -15,6 +15,14 @@ import { ProfileIconOutline } from '../component/svg/ProfileIconOutline.jsx';
 import Logout from "../component/img/Logout.png";
 import ConfirmModal from "../component/modal/ConfirmModal.jsx";
 
+// Device Icon component
+const DeviceIcon = ({ className }) => (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 2C7.89543 2 7 2.89543 7 4V20C7 21.1046 7.89543 22 9 22H15C16.1046 22 17 21.1046 17 20V4C17 2.89543 16.1046 2 15 2H9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M12 18H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+
 function formatLastSynced(minutesAgo) {
     if (minutesAgo < 1) return "Just now";
     if (minutesAgo < 60) return `${minutesAgo} min${minutesAgo !== 1 ? "s" : ""} ago`;
@@ -38,22 +46,23 @@ function MainLayout() {
     const initialUser = (() => {
         try {
             const s = localStorage.getItem("user");
-            if (!s) return { username: "", email: "" };
+            if (!s) return { username: "", email: "", deviceId: "" };
             const u = JSON.parse(s);
             return {
                 username: u?.username || "",
-                email: u?.email || ""
+                email: u?.email || "",
+                deviceId: u?.deviceId || u?.deviceID || ""
             };
         } catch {
-            return { username: "", email: "" };
+            return { username: "", email: "", deviceId: "" };
         }
     })();
-    const [username, setUsername] = useState(initialUser.username)
-    const [email, setEmail] = useState(initialUser.email)
-    const [contacts, setContacts] = useState([])
-    const deviceNo = "MK-II"
-    const lastSynced = "2"
-    const isConnected = false
+    const [username, setUsername] = useState(initialUser.username);
+    const [email, setEmail] = useState(initialUser.email);
+    const [deviceId, setDeviceId] = useState(initialUser.deviceId);
+    const [contacts, setContacts] = useState([]);
+    const lastSyncedMinutes = "2";
+    const isConnected = false;
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [notifications, setNotifications] = useState([]);
 
@@ -93,6 +102,7 @@ function MainLayout() {
                         localStorage.setItem("user", JSON.stringify(response.user));
                         setUsername(response.user.username || "");
                         setEmail(response.user.email || "");
+                        setDeviceId(response.user.deviceId || response.user.deviceID || "");
                     }
                 } catch (error) {
                     console.error("Error refreshing user data:", error);
@@ -184,10 +194,11 @@ function MainLayout() {
         { type: "Accelerometer", connection: "Active" },
         { type: "Gyroscope", connection: "Inactive" },
         { type: "Camera", connection: "Active" },
-    ]
+    ];
 
     const buttons = [
         { icon: DashboardIcon, name: "Home", path: "/user/home" },
+        { icon: DeviceIcon, name: "Device", path: "/user/device" },
         { icon: UsersIcon, name: "Contact Persons", path: "/user/contact-persons" },
         { icon: DevicesIcon, name: "Notifications", path: "/user/notifications" },
         { icon: SettingsIcon, name: "Settings", path: "/user/settings" }
@@ -260,16 +271,16 @@ function MainLayout() {
                     {/* Announcements banner removed; updates now appear under Notifications → Updates */}
                     <Outlet context={{
                         username: username,
-                        setUsername: setUsername,
-                        email: email,
-                        setEmail: setEmail,
-                        deviceNo: deviceNo,
-                        lastSynced: formatLastSynced(lastSynced),
-                        isConnected: isConnected,
-                        sensors: sensors,
-                        contacts: contacts,
-                        setContacts: setContacts,
-                        notifications: notifications,
+                        setUsername,
+                        email,
+                        setEmail,
+                        deviceNo: deviceId,
+                        lastSynced: formatLastSynced(Number(lastSyncedMinutes)),
+                        isConnected,
+                        sensors,
+                        contacts,
+                        setContacts,
+                        notifications,
                         isLight,
                         setIsLight
                     }} />

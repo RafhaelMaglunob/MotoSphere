@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { getRecentAlerts, getSystemActivity } from './firebaseService';
+import { getRecentAlerts, getSystemActivityFromChangelogs } from './firebaseService';
 
 // Mock SVG Icons - replace with your actual imports
 const UsersIcon = ({ className }) => <div className={className}>👥</div>;
@@ -181,7 +181,7 @@ function Dashboard() {
         const fetchAlerts = async () => {
             try {
                 setLoadingAlerts(true);
-                const alerts = await getRecentAlerts(5);
+                const alerts = await getRecentAlerts(3);
                 // Transform alerts to match the expected format
                 const formattedAlerts = alerts.map(alert => {
                     const timeOfOccurrence = alert.time_of_occurrence || alert.time_of_occurence || alert.timestamp;
@@ -222,50 +222,38 @@ function Dashboard() {
         fetchAlerts();
     }, []);
 
-    // Fetch system activity
+    // Fetch system activity (from changelogs = admin actions)
     useEffect(() => {
         const fetchActivity = async () => {
             try {
                 setLoadingActivity(true);
-                const activities = await getSystemActivity(5);
-                // Transform activities to match the expected format
+                const activities = await getSystemActivityFromChangelogs(3);
                 const formattedActivities = activities.map(activity => {
-                    const timestamp = activity.timestamp || activity.createdAt || activity.time;
+                    const timestamp = activity.date || activity.createdAt || activity.timestamp;
                     let timeStr = 'Unknown';
-                    
                     if (timestamp) {
                         if (timestamp.toDate) {
-                            // Firestore Timestamp
                             const activityTime = timestamp.toDate();
-                            timeStr = activityTime.toLocaleTimeString('en-US', { 
-                                hour: 'numeric', 
+                            timeStr = activityTime.toLocaleTimeString('en-US', {
+                                hour: 'numeric',
                                 minute: '2-digit',
-                                hour12: true 
+                                hour12: true
                             });
+                            const daysAgo = Math.floor((Date.now() - activityTime.getTime()) / (24 * 60 * 60 * 1000));
+                            if (daysAgo === 0) timeStr = `Today, ${timeStr}`;
+                            else if (daysAgo === 1) timeStr = `Yesterday, ${timeStr}`;
+                            else timeStr = activityTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + timeStr;
                         } else if (timestamp.seconds) {
-                            // Firestore Timestamp object
                             const activityTime = new Date(timestamp.seconds * 1000);
-                            timeStr = activityTime.toLocaleTimeString('en-US', { 
-                                hour: 'numeric', 
-                                minute: '2-digit',
-                                hour12: true 
-                            });
-                        } else if (timestamp instanceof Date) {
-                            timeStr = timestamp.toLocaleTimeString('en-US', { 
-                                hour: 'numeric', 
-                                minute: '2-digit',
-                                hour12: true 
-                            });
-                        } else if (typeof timestamp === 'string') {
-                            timeStr = timestamp;
+                            timeStr = activityTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                         }
                     }
-                    
+                    const by = activity.actorName || activity.actorEmail ? ` by ${activity.actorName || activity.actorEmail}` : '';
                     return {
-                        action: activity.action || activity.type || activity.activityType || 'registration',
+                        action: activity.action || 'system',
                         time: timeStr,
                         id: activity.id,
-                        description: activity.description || activity.message || ''
+                        description: (activity.summary || (activity.changes && activity.changes[0]) || 'System activity') + by
                     };
                 });
                 setSystemActivity(formattedActivities);
@@ -276,7 +264,7 @@ function Dashboard() {
                 setLoadingActivity(false);
             }
         };
-        
+
         fetchActivity();
     }, []);
 
@@ -401,9 +389,9 @@ function Dashboard() {
                                 <Dot className="text-[#06b6d4] text-4xl leading-none" />
                                 <div className="text-[#9BB3D6] text-sm flex flex-col ml-2">
                                     <span className="text-white font-medium">
-                                        {act.description || `New user ${act.action} verified`}
+                                        {act.description || `Activity: ${act.action}`}
                                     </span>
-                                    <span className="text-xs mt-1">{act.time} • System Auto check</span>
+                                    <span className="text-xs mt-1">{act.time}</span>
                                 </div>
                             </div>
                         ))

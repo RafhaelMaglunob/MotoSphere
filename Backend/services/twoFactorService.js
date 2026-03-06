@@ -5,16 +5,27 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Generate 2FA secret for a user
+const ISSUER = 'MotoSphere';
+
 export const generate2FASecret = (username, email) => {
   const secret = speakeasy.generateSecret({
-    name: `MotoSphere (${username || email})`,
-    issuer: 'MotoSphere',
     length: 32
   });
 
+  // Build otpauth URL manually so QR is always valid (avoid issuer/label encoding issues)
+  const account = (username || email || 'Account').replace(/:/g, '');
+  const label = `${ISSUER}:${account}`;
+  const otpauth_url = [
+    'otpauth://totp/',
+    encodeURIComponent(label),
+    '?secret=', secret.base32,
+    '&issuer=', encodeURIComponent(ISSUER),
+    '&algorithm=SHA1&digits=6&period=30'
+  ].join('');
+
   return {
     secret: secret.base32,
-    otpauth_url: secret.otpauth_url
+    otpauth_url
   };
 };
 

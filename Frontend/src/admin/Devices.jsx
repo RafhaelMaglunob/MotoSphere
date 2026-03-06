@@ -77,10 +77,11 @@ function Devices() {
 
     const tableColumns = [
         { key: "deviceID", label: "Device ID", minWidth: '180px' },
-        { key: "assigned_user", label: "Assigned User", minWidth: '150px' }
+        { key: "assigned_user", label: "Assigned User", minWidth: '150px' },
+        { key: "role", label: "Role", minWidth: '120px' }
     ];
 
-    // Load riders (from users collection) + their deviceId field
+    // Load all riders + their deviceId/deviceID field
     useEffect(() => {
         const load = async () => {
             try {
@@ -93,18 +94,24 @@ function Devices() {
                 const usersSnap = await getDocs(collection(db, "users"));
                 const users = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-                const riders = users.filter((u) => u.role?.toLowerCase()?.trim() === "rider");
+                // Only include riders (role === 'rider')
+                const riders = users.filter((u) => 
+                    (u.role || '').toString().trim().toLowerCase() === 'rider'
+                );
 
-                const mapped = riders.map((rider) => {
+                const mapped = riders.map((user) => {
                     const name =
-                        rider.name ||
-                        rider.username ||
-                        (rider.email ? rider.email.split("@")[0] : rider.id);
+                        user.name ||
+                        user.username ||
+                        (user.email ? user.email.split("@")[0] : user.id);
+
+                    const deviceId = user.deviceId || user.deviceID || "";
 
                     return {
-                        id: rider.id,
-                        deviceID: rider.deviceId || rider.deviceID || "—",
+                        id: user.id,
+                        deviceID: deviceId || "None",
                         assigned_user: name,
+                        role: (user.role || '').toString() || '',
                     };
                 });
 

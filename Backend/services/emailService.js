@@ -1,7 +1,13 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load "env" (no extension) from Backend root so email credentials are available
+dotenv.config({ path: path.join(__dirname, '..', 'env') });
 
 // Create reusable transporter object using Gmail SMTP
 const createTransporter = () => {
@@ -325,8 +331,74 @@ export const notifyAdminsAboutAlert = async (alertData) => {
   }
 };
 
+// Send system alert (changelog-style) email to a single recipient
+export const sendSystemAlertEmail = async (toEmail, { summary, changes = [], actorName, actorEmail, date }) => {
+  try {
+    const transporter = createTransporter();
+    const dateStr = date ? (date.toDate ? date.toDate() : new Date(date)).toLocaleString() : new Date().toLocaleString();
+    const byLine = (actorName || actorEmail) ? ` by ${actorName || actorEmail}` : '';
+    const changeItems = Array.isArray(changes) && changes.length > 0 ? changes : (summary ? [summary] : []);
+
+    const mailOptions = {
+      from: `"MotoSphere System Alerts" <${process.env.GMAIL_USER}>`,
+      to: toEmail,
+      subject: `📋 MotoSphere System Alert: ${(summary || 'Update').slice(0, 50)}${summary && summary.length > 50 ? '...' : ''}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .container { background-color: #f4f4f4; padding: 30px; border-radius: 10px; }
+            .header { background: linear-gradient(135deg, #0F2A52 0%, #2EA8FF 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center; }
+            .content { background-color: white; padding: 30px; border-radius: 0 0 10px 10px; }
+            .alert-box { background-color: #EFF6FF; border-left: 4px solid #2EA8FF; padding: 20px; margin: 20px 0; border-radius: 5px; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+            ul { margin: 10px 0; padding-left: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><h1>📋 System Alert</h1></div>
+            <div class="content">
+              <p>Hello,</p>
+              <p>A system change was recorded in MotoSphere:</p>
+              <div class="alert-box">
+                <h2 style="margin-top: 0; color: #0F2A52;">${summary || 'System update'}</h2>
+                <p style="color: #6B7280; font-size: 14px;">${dateStr}${byLine}</p>
+                ${changeItems.length > 0 ? `<ul>${changeItems.map(c => `<li>${c}</li>`).join('')}</ul>` : ''}
+              </div>
+              <p style="color: #6B7280; font-size: 14px;">
+                You received this because System Alerts are enabled in your Notification Settings.
+              </p>
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/changelogs" 
+                   style="display: inline-block; padding: 12px 30px; background-color: #2EA8FF; color: white; text-decoration: none; border-radius: 5px;">View Change Logs</a>
+              </div>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} MotoSphere. This is an automated email; you can turn off System Alerts in Admin Settings.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `MotoSphere System Alert\n\n${summary || 'System update'}\n${dateStr}${byLine}\n\n${changeItems.map(c => `• ${c}`).join('\n')}\n\nView change logs: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/changelogs\n\n© ${new Date().getFullYear()} MotoSphere.`
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('System alert email sent to:', toEmail, info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending system alert email:', error);
+    throw new Error('Failed to send system alert email');
+  }
+};
+
 export default {
   sendPasswordResetEmail,
   sendAlertNotificationEmail,
-  notifyAdminsAboutAlert
+  notifyAdminsAboutAlert,
+  sendSystemAlertEmail
 };

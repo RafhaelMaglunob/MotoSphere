@@ -140,14 +140,34 @@ function TwoFactorSetup({ isLight, isEnabled, onToggle }) {
   if (step === 'verifying') {
     return (
       <div className="flex flex-col gap-4">
+        <div className={`${isLight ? "bg-amber-50 border-amber-200" : "bg-amber-500/10 border-amber-500/30"} border p-4 rounded-lg`}>
+          <h4 className={`${isLight ? "text-black" : "text-white"} font-semibold mb-2`}>📱 Use your authenticator app</h4>
+          <p className={`${isLight ? "text-gray-700" : "text-[#9BB3D6]"} text-sm`}>
+            Do <strong>not</strong> use your phone’s default camera. Open <strong>Google Authenticator</strong>, <strong>Authy</strong>, or <strong>Microsoft Authenticator</strong>, then tap &quot;Add account&quot; or &quot;Scan QR code&quot; and scan the code below with the app’s built-in scanner.
+          </p>
+        </div>
+
         <div className={`${isLight ? "bg-white" : "bg-[#0A1A3A]"} p-6 rounded-lg border ${isLight ? "border-gray-200" : "border-gray-700"}`}>
           <h3 className={`${isLight ? "text-black" : "text-white"} font-semibold mb-4`}>Scan QR Code</h3>
           <div className="flex flex-col items-center gap-4">
             <img src={qrCode} alt="2FA QR Code" className="w-48 h-48 border-2 border-gray-300 rounded-lg" />
             <p className={`${isLight ? "text-gray-600" : "text-[#9BB3D6]"} text-sm text-center`}>
-              Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+              Scan this QR code inside your authenticator app (use the app’s scanner, not your camera).
             </p>
           </div>
+        </div>
+
+        <div className={`${isLight ? "bg-white" : "bg-[#0A1A3A]"} p-4 rounded-lg border ${isLight ? "border-gray-200" : "border-gray-700"}`}>
+          <h4 className={`${isLight ? "text-black" : "text-white"} font-semibold mb-2`}>Can’t scan? Enter this code manually</h4>
+          <p className={`${isLight ? "text-gray-600" : "text-[#9BB3D6]"} text-sm mb-2`}>
+            In your authenticator app, choose &quot;Enter a setup key&quot; and enter this secret:
+          </p>
+          <code className={`block ${isLight ? "bg-gray-100 text-black" : "bg-[#0A1A3A] text-[#2EA8FF]"} p-3 rounded font-mono text-sm break-all select-all`}>
+            {_secret}
+          </code>
+          <p className={`${isLight ? "text-gray-500" : "text-[#9BB3D6]/80"} text-xs mt-2`}>
+            Use the same app (e.g. Google Authenticator) and add the 6-digit code it shows when verifying below.
+          </p>
         </div>
 
         <div className="flex flex-col gap-2">

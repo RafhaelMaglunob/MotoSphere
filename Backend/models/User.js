@@ -75,7 +75,8 @@ export const User = {
       contactNo: userData.contactNo,
       address: userData.address || '',
       password: hashedPassword,
-      role: userData.role || 'user',
+      // Default all newly created users to 'rider' unless an explicit role is provided
+      role: userData.role || 'rider',
       emailVerified: userData.emailVerified || false,
       phoneVerified: userData.phoneVerified || false,
       profilePicture: userData.profilePicture || null,
